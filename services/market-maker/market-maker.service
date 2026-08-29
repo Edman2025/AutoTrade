@@ -1,0 +1,31 @@
+[Unit]
+Description=Bingan AMM mainnet control plane
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=maker
+Group=maker
+WorkingDirectory=/opt/autotrade
+EnvironmentFile=/etc/autotrade/market-maker.env
+ExecStart=/usr/bin/node services/market-maker/server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/autotrade/services/market-maker/data
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

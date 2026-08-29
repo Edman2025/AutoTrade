@@ -1,0 +1,11 @@
+.git
+.DS_Store
+node_modules
+**/node_modules
+services/market-maker/.env
+deploy/*.env
+runtime
+backups
+test-wallets.json
+market-maker-console/dist
+market-maker-console/.vite

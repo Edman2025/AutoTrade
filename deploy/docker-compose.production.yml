@@ -1,0 +1,44 @@
+name: agent-trade
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    image: agent-trade-market-maker:production
+    env_file:
+      - ./market-maker.production.env
+    volumes:
+      - ../runtime/market-maker:/app/services/market-maker/data
+    ports:
+      - "127.0.0.1:18788:8788"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  database-backup:
+    image: agent-trade-market-maker:production
+    env_file:
+      - ./market-maker.production.env
+    environment:
+      MAKER_BACKUP_DIRECTORY: /app/services/market-maker/data/backups
+      MAKER_BACKUP_INTERVAL_MS: "21600000"
+      MAKER_BACKUP_RETENTION_DAYS: "14"
+    command: ["scripts/backup-market-maker-loop.mjs"]
+    volumes:
+      - ../runtime/market-maker:/app/services/market-maker/data
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

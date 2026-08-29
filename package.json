@@ -1,0 +1,40 @@
+{
+  "name": "wallet-fixture-generator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate:test-wallets": "node scripts/generate-test-wallets.mjs",
+    "test-wallets:verify": "node scripts/verify-test-wallets.mjs",
+    "test-wallets:reveal": "node scripts/reveal-test-wallet.mjs",
+    "wallet:create": "node scripts/create-wallet.mjs",
+    "wallet:addresses": "node scripts/show-addresses.mjs",
+    "wallet:reveal-recovery": "node scripts/reveal-recovery.mjs --i-understand-this-prints-my-recovery-phrase",
+    "bingan:swap": "node scripts/bingan-swap.mjs",
+    "bg:buy-sol": "node scripts/buy-bg-with-sol.mjs",
+    "bg:arb-monitor": "node scripts/bg-arbitrage-monitor.mjs",
+    "bg:arb-once": "node scripts/bg-arbitrage-monitor.mjs --once",
+    "bg:take-profit": "node scripts/bg-take-profit.mjs",
+    "bg:take-profit:live": "node scripts/bg-take-profit.mjs --broadcast",
+    "maker:probe": "node --env-file-if-exists=services/market-maker/.env services/market-maker/cli.mjs probe",
+    "maker:check": "node --env-file-if-exists=services/market-maker/.env services/market-maker/cli.mjs check",
+    "maker:serve": "node --env-file-if-exists=services/market-maker/.env services/market-maker/server.mjs",
+    "maker:test": "node --test services/market-maker/test/*.test.mjs",
+    "maker:security-check": "node scripts/verify-dependency-mitigations.mjs"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@meteora-ag/cp-amm-sdk": "^1.4.7",
+    "@meteora-ag/dlmm": "^1.9.14",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.98.4",
+    "bigint-buffer": "file:vendor/bigint-buffer",
+    "bip39": "^3.1.0",
+    "ed25519-hd-key": "^1.3.0",
+    "ethers": "^6.16.0"
+  },
+  "overrides": {
+    "jayson": {
+      "uuid": "11.1.1"
+    }
+  }
+}
