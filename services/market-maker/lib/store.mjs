@@ -152,9 +152,12 @@ export class MakerStore {
   }
 
   listSnapshotsSince(since, limit = 5_000) {
-    return this.db.prepare(`SELECT payload FROM (
-      SELECT id,payload FROM snapshots WHERE captured_at>=? ORDER BY id DESC LIMIT ?
-    ) ORDER BY id ASC`).all(since, limit).map((row) => JSON.parse(row.payload));
+    const boundary = this.db.prepare(`SELECT MIN(id) AS id FROM (
+      SELECT id FROM snapshots WHERE captured_at>=? ORDER BY id DESC LIMIT ?
+    )`).get(since, limit)?.id;
+    if (boundary == null) return [];
+    return this.db.prepare("SELECT payload FROM snapshots WHERE captured_at>=? AND id>=? ORDER BY id ASC")
+      .all(since, boundary).map((row) => JSON.parse(row.payload));
   }
 
   hasTokenActivity(signature) {
