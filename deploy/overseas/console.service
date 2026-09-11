@@ -1,0 +1,22 @@
+[Unit]
+Description=Xianluobi AMM market-making console
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=siam-console
+Group=siam-console
+WorkingDirectory=/opt/siam-console/current
+EnvironmentFile=/etc/siam-console.env
+ExecStart=/opt/node/bin/node services/market-maker/server.mjs
+Restart=always
+RestartSec=5
+UMask=0077
+StateDirectory=siam-console
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/siam-console
+MemoryMax=768M
+[Install]
+WantedBy=multi-user.target

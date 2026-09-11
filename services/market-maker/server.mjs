@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
+import { requestIp } from "./lib/request-ip.mjs";
 import { URL } from "node:url";
 import { loadConfig, publicConfig } from "./lib/config.mjs";
 import { MarketDataService } from "./lib/market-data.mjs";
@@ -298,7 +299,7 @@ function redactIntent(intent) {
 function redactRouteLeg(leg) { return { ...leg, unsignedTx: leg.unsignedTx ? "available" : null }; }
 
 function requireRate(request, group, limit, windowMs) {
-  const key = `${group}:${request.socket.remoteAddress ?? "unknown"}`;
+  const key = `${group}:${requestIp(request, process.env.MAKER_TRUST_LOOPBACK_PROXY === "true")}`;
   const now = Date.now();
   const bucket = rateBuckets.get(key);
   if (!bucket || now - bucket.startedAt >= windowMs) {
