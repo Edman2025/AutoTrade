@@ -39,7 +39,10 @@ const pageMeta = {
   "池总览": [CirclesFour, "池总览", "暹罗币/ANTFUN 与 ANTFUN/USDT 两池主网拓扑；SOL 仅作手续费储备。"],
   "流动性仓位": [Database, "流动性仓位", "仅显示配置钱包公开拥有的真实 Position NFT。"],
   "成交增长": [ChartLineUp, "成交增长", "观察真实 Swap、流动性深度和自然成交质量；不生成对敲或虚假成交。"],
-  "持有人洞察": [Scan, "持有人洞察", "读取暹罗币 Mint 权限、供应量与最大账户分布；不批量制造虚假持有人。"],
+  "持币地址": [Scan, "持币地址", "枚举暹罗币全部正余额 Token Account，并按链上 owner 聚合为真实持币地址。"],
+  "盈利地址": [TrendUp, "盈利地址", "基于本服务已索引的主池 Swap 计算分析窗口收益，并明确标注数据覆盖范围。"],
+  "实时交易": [Swap, "实时交易", "解析暹罗币/ANTFUN 主池已确认交易，以 vault 余额差识别真实买卖方向。"],
+  "流动性变化": [Database, "流动性变化", "使用持续保存的主网池快照观察储备、估算流动性和价格变化。"],
   "买方库存执行": [TrendUp, "买方库存执行", "将 USDT→ANTFUN→暹罗币拆分为受风控保护的库存补充计划；不设价格拉升目标。"],
   "卖方库存执行": [TrendDown, "卖方库存执行", "将暹罗币→ANTFUN→USDT拆分为受风控保护的库存降低计划；不设价格打压目标。"],
   "库存与损益": [ChartLineUp, "库存与损益", "损益必须由链上仓位和执行账本计算，不使用界面模拟值。"],
@@ -58,7 +61,10 @@ export function OperationalPageRouter({ page, maker }) {
       {page === "池总览" && <Overview maker={maker} />}
       {page === "流动性仓位" && <Positions maker={maker} />}
       {page === "成交增长" && <Intents maker={maker} />}
-      {page === "持有人洞察" && <TokenRadar maker={maker} />}
+      {page === "持币地址" && <HolderMonitor maker={maker} />}
+      {page === "盈利地址" && <ProfitableWallets maker={maker} />}
+      {page === "实时交易" && <LiveActivity maker={maker} />}
+      {page === "流动性变化" && <LiquidityChanges maker={maker} />}
       {page === "买方库存执行" && <InventoryExecution maker={maker} side="buy" />}
       {page === "卖方库存执行" && <InventoryExecution maker={maker} side="sell" />}
       {page === "库存与损益" && <Accounting maker={maker} />}
@@ -379,26 +385,143 @@ function BatchConsole({ maker }) {
   </>;
 }
 
-function TokenRadar({ maker }) {
+function HolderMonitor({ maker }) {
+  const monitor = maker.tokenMonitor;
+  const holders = monitor?.holders;
   const intelligence = maker.tokenIntelligence;
-  const concentration = intelligence?.concentration ?? {};
-  const poolVerified = Boolean(maker.snapshot?.pools?.siamAntfun?.identity?.verified);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
+  const filtered = (holders?.items ?? []).filter((item) => !query || item.address.toLowerCase().includes(query.toLowerCase()) || item.tags?.some((tag) => tag.includes(query)));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   return <>
     <div className="ops-metrics">
-      <Metric label="暹罗币总供应量" value={intelligence?.supplyUi ? amount(intelligence.supplyUi) : "—"} note={`Decimals ${intelligence?.decimals ?? "—"}`} />
-      <Metric label="Mint 权限" value={intelligence ? (intelligence.mintAuthority ? "未撤销" : "已撤销") : "—"} note={intelligence?.mintAuthority ? "仍可增发" : "主网 Mint 账户校验"} tone={intelligence && !intelligence.mintAuthority ? "ok" : "warn"} />
-      <Metric label="冻结权限" value={intelligence ? (intelligence.freezeAuthority ? "未撤销" : "已撤销") : "—"} note={intelligence?.freezeAuthority ? "可冻结 Token Account" : "主网 Mint 账户校验"} tone={intelligence && !intelligence.freezeAuthority ? "ok" : "warn"} />
-      <Metric label="Top 10 集中度" value={bps(concentration.top10Bps)} note={concentration.accountsSampled ? `${concentration.accountsSampled} 个最大账户样本` : "公共 RPC 未提供索引"} tone={concentration.top10Bps == null ? undefined : Number(concentration.top10Bps) <= 8000 ? "ok" : "warn"} />
+      <Metric label="真实持币地址" value={holders?.distinctHolders == null ? "—" : Number(holders.distinctHolders).toLocaleString()} note="全部正余额账户按 owner 去重" tone="ok" />
+      <Metric label="正余额 Token Account" value={holders?.positiveTokenAccounts == null ? "—" : Number(holders.positiveTokenAccounts).toLocaleString()} note="链上账户数，不冒充持有人数" />
+      <Metric label="索引供应覆盖" value={bps(holders?.supplyCoverageBps)} note={`${amount(holders?.indexedAmountUi)} 暹罗币`} />
+      <Metric label="Top 10 集中度" value={bps(holders?.top10Bps)} note={holders?.capturedAt ? `更新 ${time(holders.capturedAt)}` : "等待全量索引"} tone={Number(holders?.top10Bps ?? 0) > 8000 ? "warn" : undefined} />
     </div>
+
+    <div className="ops-policy-callout"><ShieldCheck size={17} weight="fill" /><div><strong>全量 owner 口径</strong><span>系统枚举该 Mint 的全部正余额 Token Account，再按链上 owner 聚合；主池 vault 与运营钱包会单独标识。</span></div></div>
+    <section className="ops-card monitor-table-card">
+      <div className="monitor-card-heading"><CardTitle icon={Scan} title="全部持币地址" note={`${filtered.length} / ${holders?.distinctHolders ?? "—"} 个地址`} /><div className="monitor-toolbar"><input aria-label="搜索持币地址" placeholder="搜索地址或标签" value={query} onChange={(event) => { setQuery(event.target.value.trim()); setPage(1); }} /><span className={`monitor-source monitor-source--${holders?.status ?? "unavailable"}`}>{monitorStatus(holders?.status)}</span></div></div>
+      {visible.length ? <DataTable headers={["排名", "Owner 地址", "标签", "持有量", "占供应量", "Token Account", "窗口买 / 卖", "最近活动"]} rows={visible.map((item) => [
+        `#${item.rank}`,
+        <ChainLink key={`${item.address}-holder`} address={item.address} />,
+        item.tags?.length ? item.tags.join(" · ") : "普通地址",
+        `${amount(item.amountUi)} 暹罗币`,
+        bps(item.shareBps),
+        item.tokenAccounts,
+        `${item.buys ?? 0} / ${item.sells ?? 0}`,
+        item.lastActivityAt ? time(item.lastActivityAt) : "—",
+      ])} /> : <Empty compact>{holders?.error ?? "尚未取得全量持有人索引；系统不会用最大账户样本冒充全部地址。"}</Empty>}
+      {filtered.length > pageSize && <div className="monitor-pagination"><span>第 {currentPage} / {pageCount} 页</span><button disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>上一页</button><button disabled={currentPage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>下一页</button></div>}
+      {holders?.error && <div className="ops-quote-error"><Warning size={16} weight="fill" />{holders.error}</div>}
+    </section>
 
     <div className="ops-grid token-grid">
-      <section className="ops-card"><CardTitle icon={Scan} title="暹罗币 Mint 主网画像" note={intelligence?.capturedAt ? time(intelligence.capturedAt) : "等待 RPC"} /><dl className="ops-kv"><Row label="Mint" value={intelligence?.mint ?? "—"} mono /><Row label="Token Program" value={intelligence?.tokenProgram ?? "—"} /><Row label="Program ID" value={intelligence?.programId ?? "—"} mono /><Row label="初始化状态" value={intelligence?.initialized == null ? "—" : intelligence.initialized ? "已初始化" : "异常"} /><Row label="供应量 (raw)" value={intelligence?.supplyRaw ?? "—"} mono /></dl></section>
-      <section className="ops-card"><CardTitle icon={ShieldCheck} title="发行与池身份检查" note="实时结论" /><ul className="ops-checklist"><Check ok={Boolean(intelligence?.initialized)}>Mint 账户已初始化</Check><Check ok={intelligence?.mintAuthority === null}>Mint 增发权限已撤销</Check><Check ok={intelligence?.freezeAuthority === null}>Token Account 冻结权限已撤销</Check><Check ok={poolVerified}>暹罗币/ANTFUN DAMM v2 主池身份已验证</Check><Check ok={Boolean(maker.snapshot?.pools?.antfunUsdt?.identity?.verified)}>ANTFUN/USDT 桥接主池身份已验证</Check></ul></section>
+      <section className="ops-card"><CardTitle icon={Scan} title="暹罗币 Mint 主网画像" note={intelligence?.capturedAt ? time(intelligence.capturedAt) : "等待 RPC"} /><dl className="ops-kv"><Row label="Mint" value={intelligence?.mint ?? monitor?.mint ?? "—"} mono /><Row label="Token Program" value={intelligence?.tokenProgram ?? "—"} /><Row label="初始化状态" value={intelligence?.initialized == null ? "—" : intelligence.initialized ? "已初始化" : "异常"} /><Row label="供应量" value={intelligence?.supplyUi ? `${amount(intelligence.supplyUi)} 暹罗币` : "—"} /></dl></section>
+      <section className="ops-card"><CardTitle icon={ShieldCheck} title="发行与池身份检查" note="实时结论" /><ul className="ops-checklist"><Check ok={Boolean(intelligence?.initialized)}>Mint 账户已初始化</Check><Check ok={intelligence?.mintAuthority === null}>Mint 增发权限已撤销</Check><Check ok={intelligence?.freezeAuthority === null}>Token Account 冻结权限已撤销</Check><Check ok={Boolean(maker.snapshot?.pools?.siamAntfun?.identity?.verified)}>暹罗币/ANTFUN DAMM v2 主池身份已验证</Check></ul></section>
     </div>
-
-    <div className="ops-policy-callout"><ShieldCheck size={17} weight="fill" /><div><strong>只做真实持有人洞察</strong><span>不会批量创建空钱包、拆分代币余额或把 Token Account 数量包装成独立持有人增长。</span></div></div>
-    <section className="ops-card holder-card"><CardTitle icon={ChartLineUp} title="最大 Token Account 分布" note="RPC 返回最大账户样本；不等同于独立持有人数量" />{intelligence?.largestAccounts?.length ? <div className="holder-list">{intelligence.largestAccounts.slice(0, 10).map((account) => <div className="holder-row" key={account.address}><span>#{account.rank}</span><div><strong className="ops-mono" title={account.address}>{short(account.address)}</strong><i><b style={{ width: `${Math.max(1, Math.min(100, Number(account.shareBps ?? 0) / 100))}%` }} /></i></div><em>{amount(account.amountUi)} 暹罗币</em><b>{bps(account.shareBps)}</b></div>)}</div> : <Empty compact>公共 RPC 暂未返回最大账户列表；系统不会用模拟数据填充。</Empty>}{intelligence?.warnings?.length ? <div className="ops-quote-error"><Warning size={16} weight="fill" />{intelligence.warnings.join("；")}</div> : null}</section>
   </>;
+}
+
+function ProfitableWallets({ maker }) {
+  const monitor = maker.tokenMonitor;
+  const profit = monitor?.profitability;
+  const items = profit?.items ?? [];
+  const total = items.reduce((sum, item) => sum + Number(item.estimatedPnlUsdt ?? 0), 0);
+  const realized = items.reduce((sum, item) => sum + Number(item.realizedPnlUsdt ?? 0), 0);
+  const incomplete = items.filter((item) => item.coverage === "partial").length;
+  return <>
+    <div className="ops-metrics">
+      <Metric label="窗口盈利地址" value={profit?.profitableWallets == null ? "—" : String(profit.profitableWallets)} note={`${profit?.analyzedWallets ?? 0} 个活跃地址已分析`} tone="ok" />
+      <Metric label="估算窗口盈利" value={signedUsd(total)} note="已实现 + 未实现" tone={total >= 0 ? "ok" : "warn"} />
+      <Metric label="其中已实现" value={signedUsd(realized)} note="移动平均成本 · 已索引 Swap" />
+      <Metric label="覆盖不完整" value={String(incomplete)} note="窗口前持仓或未覆盖卖出" tone={incomplete ? "warn" : "ok"} />
+    </div>
+    <div className="ops-policy-callout ops-policy-callout--amber"><Warning size={17} weight="fill" /><div><strong>这是可审计的分析窗口，不是全历史收益</strong><span>{profit?.method ?? "系统会随主池交易持续索引扩大覆盖范围；跨池、跨链与索引开始前成本不做猜测。"}</span></div></div>
+    <section className="ops-card monitor-table-card"><CardTitle icon={TrendUp} title="盈利地址排名" note={profit?.window?.from ? `${time(profit.window.from)} — ${time(profit.window.to)}` : "等待主池交易索引"} />
+      {items.length ? <DataTable headers={["地址", "估算盈亏", "已实现", "未实现", "窗口追踪仓位", "窗口买 / 卖", "覆盖"]} rows={items.map((item) => [
+        <ChainLink key={`${item.address}-profit`} address={item.address} />,
+        <span key={`${item.address}-total`} className="is-positive">{signedUsd(item.estimatedPnlUsdt)}</span>,
+        signedUsd(item.realizedPnlUsdt),
+        signedUsd(item.unrealizedPnlUsdt),
+        `${amount(item.trackedPositionUi)} 暹罗币`,
+        `${item.buys} / ${item.sells}`,
+        item.coverage === "window" ? "窗口内可复算" : "部分覆盖",
+      ])} /> : <Empty compact>尚未在已索引主池交易中发现可计算的盈利地址；不会填入推测数据。</Empty>}
+    </section>
+  </>;
+}
+
+function LiveActivity({ maker }) {
+  const activity = maker.tokenMonitor?.activity;
+  const [filter, setFilter] = useState("all");
+  const all = activity?.items ?? [];
+  const items = filter === "all" ? all : all.filter((item) => item.side === filter);
+  const buys = all.filter((item) => item.side === "buy").length;
+  const sells = all.filter((item) => item.side === "sell").length;
+  const volumeUsd = all.reduce((sum, item) => sum + Number(item.estimatedUsdt ?? 0), 0);
+  return <>
+    <div className="ops-metrics">
+      <Metric label="已索引 Swap" value={String(activity?.window?.swaps ?? 0)} note={activity?.window?.from ? `${time(activity.window.from)} 起` : "正在预热"} tone="ok" />
+      <Metric label="买入" value={String(buys)} note="暹罗币 vault 减少" />
+      <Metric label="卖出" value={String(sells)} note="暹罗币 vault 增加" />
+      <Metric label="窗口估算成交额" value={usd(volumeUsd)} note="按当前 ANTFUN/USDT 隐含价折算" />
+    </div>
+    <section className="ops-card monitor-table-card">
+      <div className="monitor-card-heading"><CardTitle icon={Pulse} title="实时主池交易" note={activity?.source ?? "等待数据源"} /><div className="monitor-tabs"><button className={filter === "all" ? "is-active" : ""} onClick={() => setFilter("all")}>全部</button><button className={filter === "buy" ? "is-active" : ""} onClick={() => setFilter("buy")}>买入</button><button className={filter === "sell" ? "is-active" : ""} onClick={() => setFilter("sell")}>卖出</button></div></div>
+      {items.length ? <DataTable headers={["时间", "方向", "交易地址", "暹罗币数量", "ANTFUN 数量", "估算 USD", "成交价", "交易签名"]} rows={items.map((item) => [
+        time(item.blockTime),
+        <span key={`${item.signature}-side`} className={`trade-side trade-side--${item.side}`}>{item.side === "buy" ? "买入" : "卖出"}</span>,
+        <ChainLink key={`${item.signature}-wallet`} address={item.walletAddress} />,
+        amount(item.tokenAmountUi),
+        amount(item.quoteAmountUi),
+        usd(item.estimatedUsdt),
+        `${Number(item.tokenPriceInQuote ?? 0).toPrecision(6)} ANTFUN`,
+        <SignatureLink key={`${item.signature}-signature`} signature={item.signature} />,
+      ])} /> : <Empty compact>{activity?.error ?? "正在解析主池最近交易；非 Swap 交易会被排除。"}</Empty>}
+      {activity?.error && <div className="ops-quote-error"><Warning size={16} weight="fill" />{activity.error}</div>}
+    </section>
+  </>;
+}
+
+function LiquidityChanges({ maker }) {
+  const liquidity = maker.tokenMonitor?.liquidity;
+  const [series, setSeries] = useState("totalLiquidityUsd");
+  const current = liquidity?.current;
+  const chartData = (liquidity?.points ?? []).map((item) => ({ ...item, label: hour(item.capturedAt) }));
+  const seriesName = series === "siamPoolUsd" ? "暹罗币 / ANTFUN" : series === "bridgePoolUsd" ? "ANTFUN / USDT" : "两池合计";
+  return <>
+    <div className="ops-metrics">
+      <Metric label="两池估算流动性" value={usd(current?.totalLiquidityUsd)} note="vault 储备按快照隐含价估值" tone="ok" />
+      <Metric label="暹罗币 / ANTFUN" value={usd(current?.siamPoolUsd)} note={`${amount(current?.siamReserve)} 暹罗币`} />
+      <Metric label="ANTFUN / USDT" value={usd(current?.bridgePoolUsd)} note="桥接池 vault 资产估值" />
+      <Metric label="记录期变化" value={bps(liquidity?.changeBps)} note={`${liquidity?.window?.samples ?? 0} 个主网快照`} tone={Number(liquidity?.changeBps ?? 0) >= 0 ? "ok" : "warn"} />
+    </div>
+    <section className="ops-card liquidity-monitor-card">
+      <div className="monitor-card-heading"><CardTitle icon={Database} title="流动性变化曲线" note={liquidity?.window?.from ? `${time(liquidity.window.from)} — ${time(liquidity.window.to)}` : "等待连续快照"} /><div className="monitor-tabs"><button className={series === "totalLiquidityUsd" ? "is-active" : ""} onClick={() => setSeries("totalLiquidityUsd")}>两池合计</button><button className={series === "siamPoolUsd" ? "is-active" : ""} onClick={() => setSeries("siamPoolUsd")}>暹罗币主池</button><button className={series === "bridgePoolUsd" ? "is-active" : ""} onClick={() => setSeries("bridgePoolUsd")}>桥接池</button></div></div>
+      {chartData.length ? <div className="liquidity-monitor-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData} margin={{ top: 18, right: 22, bottom: 8, left: 16 }}><CartesianGrid stroke="#202a3b" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="label" minTickGap={42} tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#263249" }} /><YAxis domain={["auto", "auto"]} tickFormatter={compactUsdAxis} tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={false} width={66} /><Tooltip content={<LiquidityTooltip labelName={seriesName} dataKey={series} />} cursor={{ stroke: "#63718a", strokeDasharray: "4 4" }} /><Line type="monotone" dataKey={series} name={seriesName} stroke="#9b6cf5" strokeWidth={2.4} dot={false} activeDot={{ r: 4 }} /></LineChart></ResponsiveContainer></div> : <Empty compact>流动性历史从切换至当前代币后的兼容主网快照开始积累，不回填模拟历史。</Empty>}
+      <div className="ops-volume-footnote"><b>{liquidity?.source ?? "服务端将持续保存池级链上快照。"}</b></div>
+    </section>
+  </>;
+}
+
+function LiquidityTooltip({ active, payload, label, labelName, dataKey }) {
+  if (!active || !payload?.length) return null;
+  const item = payload.find((entry) => entry.dataKey === dataKey) ?? payload[0];
+  return <div className="ops-volume-tooltip"><strong>{label}</strong><span><i style={{ background: "#9b6cf5" }} />{labelName}<b>{usd(item?.value)}</b></span></div>;
+}
+
+function ChainLink({ address }) {
+  return <a className="monitor-link ops-mono" href={`https://solscan.io/account/${address}`} target="_blank" rel="noreferrer" title={address}>{short(address)}</a>;
+}
+
+function SignatureLink({ signature }) {
+  return <a className="monitor-link ops-mono" href={`https://solscan.io/tx/${signature}`} target="_blank" rel="noreferrer" title={signature}>{short(signature)}</a>;
 }
 
 function Accounting({ maker }) {
@@ -465,10 +588,11 @@ function StatePill({ ok, children }) { return <span className={`ops-pill ${ok ? 
 function Row({ label, value, mono }) { return <div><dt>{label}</dt><dd className={mono ? "ops-mono" : ""} title={String(value)}>{value}</dd></div>; }
 function Check({ ok, children }) { return <li className={ok ? "is-ok" : "is-blocked"}>{ok ? <CheckCircle size={17} weight="fill" /> : <XCircle size={17} weight="fill" />}<span>{children}</span></li>; }
 function Empty({ icon: Icon = Warning, title, compact = false, children }) { return <div className={`ops-empty ${compact ? "ops-empty--compact" : ""}`}><Icon size={compact ? 18 : 28} weight="duotone" />{title && <strong>{title}</strong>}<p>{children}</p></div>; }
-function DataTable({ headers, rows }) { return <div className="ops-table-wrap"><table className="ops-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} title={String(cell)}>{cell}</td>)}</tr>)}</tbody></table></div>; }
-function amount(value) { const number = Number(value); return Number.isFinite(number) ? number.toLocaleString(undefined, { maximumFractionDigits: 6 }) : "—"; }
+function DataTable({ headers, rows }) { return <div className="ops-table-wrap"><table className="ops-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} title={typeof cell === "string" || typeof cell === "number" ? String(cell) : undefined}>{cell}</td>)}</tr>)}</tbody></table></div>; }
+function amount(value) { if (value == null || value === "") return "—"; const number = Number(value); return Number.isFinite(number) ? number.toLocaleString(undefined, { maximumFractionDigits: 6 }) : "—"; }
 function usdtRaw(value) { if (value == null || !/^-?\d+$/.test(String(value))) return "—"; return `${rawToDecimal(String(value), 6)} USDT`; }
-function usd(value) { const number = Number(value); return Number.isFinite(number) ? number.toLocaleString("zh-CN", { style: "currency", currency: "USD", maximumFractionDigits: number >= 1_000 ? 0 : 2 }) : "—"; }
+function usd(value) { if (value == null || value === "") return "—"; const number = Number(value); return Number.isFinite(number) ? number.toLocaleString("zh-CN", { style: "currency", currency: "USD", maximumFractionDigits: Math.abs(number) >= 1_000 ? 0 : 2 }) : "—"; }
+function signedUsd(value) { if (value == null || !Number.isFinite(Number(value))) return "—"; const number = Number(value); return `${number >= 0 ? "+" : "−"}${usd(Math.abs(number))}`; }
 function compactUsdAxis(value) { const number = Number(value); if (!Number.isFinite(number)) return "—"; if (Math.abs(number) >= 1_000_000) return `$${(number / 1_000_000).toFixed(1)}M`; if (Math.abs(number) >= 1_000) return `$${(number / 1_000).toFixed(0)}K`; return `$${number.toFixed(0)}`; }
 function bps(value) { return value == null ? "—" : `${(Number(value) / 100).toFixed(2)}%`; }
 function time(value) { return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "—"; }
@@ -479,5 +603,6 @@ function displayPool(value) { return value === "siamAntfun" ? "暹罗币 / ANTFU
 function microLamports(value) { return value == null ? "—" : `${Number(value).toLocaleString()} μ-lamports/CU`; }
 function short(value) { const text = String(value ?? ""); return text.length > 20 ? `${text.slice(0, 9)}…${text.slice(-8)}` : text || "—"; }
 function riskReasonZh(value) { const translations = { "Configured wallet balance is below the approved input amount.": "运营钱包输入资产余额不足", "Action would increase an already out-of-band inventory exposure.": "该方向会扩大已超出容忍带的库存敞口", "System is in observe mode.": "系统处于观察模式", "Automation is paused.": "自动化已暂停" }; return translations[value] ?? value; }
+function monitorStatus(value) { return value === "ready" ? "全量索引正常" : value === "stale" ? "显示最近成功数据" : value === "warming" ? "索引预热中" : "索引暂不可用"; }
 function decimalToRaw(value, decimals) { const text = String(value).trim(); if (!/^\d+(?:\.\d+)?$/.test(text)) throw new Error("请输入有效的正数金额"); const [whole, fraction = ""] = text.split("."); if (fraction.length > decimals) throw new Error(`最多支持 ${decimals} 位小数`); const raw = BigInt(whole) * 10n ** BigInt(decimals) + BigInt((fraction + "0".repeat(decimals)).slice(0, decimals)); if (raw <= 0n) throw new Error("金额必须大于 0"); return raw.toString(); }
 function rawToDecimal(value, decimals) { if (value == null) return "—"; const raw = BigInt(value); const negative = raw < 0n; const absolute = negative ? -raw : raw; const scale = 10n ** BigInt(decimals); const whole = absolute / scale; const fraction = (absolute % scale).toString().padStart(decimals, "0").replace(/0+$/, ""); return `${negative ? "-" : ""}${whole}${fraction ? `.${fraction}` : ""}`; }

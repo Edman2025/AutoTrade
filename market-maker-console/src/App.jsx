@@ -50,7 +50,10 @@ const navItems = [
   ["池总览", CirclesFour],
   ["流动性仓位", ChartDonut],
   ["成交增长", Pulse],
-  ["持有人洞察", Scan],
+  ["持币地址", Scan],
+  ["盈利地址", TrendUp],
+  ["实时交易", Swap],
+  ["流动性变化", Database],
   ["买方库存执行", TrendUp],
   ["卖方库存执行", TrendDown],
   ["库存与损益", ChartLineUp],
@@ -513,7 +516,7 @@ export function App() {
             : "主网数据服务未连接。当前仅保留界面结构，不将设计示例金额视为真实数据。"}</span></div>
 
         <OperationalPageRouter page={activeNav} maker={maker} />
-        <footer><span>数据源：Solana RPC · Meteora DAMM v2 / DLMM</span><span><Clock size={13} />最后更新 {maker.snapshot?.capturedAt ? new Date(maker.snapshot.capturedAt).toLocaleString("zh-CN") : "—"}</span><span>主网控制台 v0.6</span></footer>
+        <footer><span>数据源：Solana RPC · Meteora DAMM v2 / DLMM</span><span><Clock size={13} />最后更新 {maker.snapshot?.capturedAt ? new Date(maker.snapshot.capturedAt).toLocaleString("zh-CN") : "—"}</span><span>主网控制台 v0.7</span></footer>
       </main>
       <ActionModal type={modal} onClose={() => setModal(null)} onStop={() => { setAutomation("stopped"); setModal(null); }} />
     </div>

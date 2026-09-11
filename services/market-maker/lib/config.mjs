@@ -31,6 +31,7 @@ export const POOLS = Object.freeze({
 
 const DEFAULTS = Object.freeze({
   rpcUrl: "https://api.mainnet.solana.com",
+  indexerRpcUrl: "https://api.mainnet.solana.com",
   host: "127.0.0.1",
   port: 8788,
   mode: "observe",
@@ -52,6 +53,10 @@ const DEFAULTS = Object.freeze({
   inventoryTargetAntfunBps: 1_000,
   inventoryTargetUsdtBps: 4_500,
   sseHeartbeatMs: 20_000,
+  tokenHolderRefreshMs: 120_000,
+  tokenActivityRefreshMs: 15_000,
+  tokenActivityLimit: 40,
+  tokenActivityParseBatch: 8,
 });
 
 export function loadConfig(env = process.env) {
@@ -76,6 +81,8 @@ export function loadConfig(env = process.env) {
     .split(",").map((value) => value.trim()).filter(Boolean);
   for (const origin of allowedOrigins) validateOrigin(origin);
   const rpcUrl = env.SOLANA_RPC_URL?.trim() || DEFAULTS.rpcUrl;
+  const indexerRpcUrl = env.SOLANA_INDEXER_RPC_URL?.trim() || DEFAULTS.indexerRpcUrl;
+  validateHttpsUrl(indexerRpcUrl, "SOLANA_INDEXER_RPC_URL");
   const rpcProvider = env.MAKER_RPC_PROVIDER?.trim() || null;
   const rpcSlaAcknowledged = env.MAKER_RPC_SLA_ACK === "I_VERIFIED_PRIVATE_RPC_SLA";
   const privateRpcVerified = privateRpcPolicy(rpcUrl, rpcProvider, rpcSlaAcknowledged);
@@ -96,6 +103,7 @@ export function loadConfig(env = process.env) {
   const config = {
     network: NETWORK,
     rpcUrl,
+    indexerRpcUrl,
     rpcProvider,
     rpcSlaAcknowledged,
     privateRpcVerified,
@@ -113,6 +121,10 @@ export function loadConfig(env = process.env) {
     databasePath: env.MAKER_DATABASE_PATH?.trim() || "services/market-maker/data/maker.sqlite",
     snapshotIntervalMs: integer(env.MAKER_SNAPSHOT_INTERVAL_MS, DEFAULTS.snapshotIntervalMs, 2_000, 300_000, "MAKER_SNAPSHOT_INTERVAL_MS"),
     sseHeartbeatMs: integer(env.MAKER_SSE_HEARTBEAT_MS, DEFAULTS.sseHeartbeatMs, 1_000, 60_000, "MAKER_SSE_HEARTBEAT_MS"),
+    tokenHolderRefreshMs: integer(env.MAKER_TOKEN_HOLDER_REFRESH_MS, DEFAULTS.tokenHolderRefreshMs, 30_000, 3_600_000, "MAKER_TOKEN_HOLDER_REFRESH_MS"),
+    tokenActivityRefreshMs: integer(env.MAKER_TOKEN_ACTIVITY_REFRESH_MS, DEFAULTS.tokenActivityRefreshMs, 5_000, 300_000, "MAKER_TOKEN_ACTIVITY_REFRESH_MS"),
+    tokenActivityLimit: integer(env.MAKER_TOKEN_ACTIVITY_LIMIT, DEFAULTS.tokenActivityLimit, 10, 100, "MAKER_TOKEN_ACTIVITY_LIMIT"),
+    tokenActivityParseBatch: integer(env.MAKER_TOKEN_ACTIVITY_PARSE_BATCH, DEFAULTS.tokenActivityParseBatch, 1, 20, "MAKER_TOKEN_ACTIVITY_PARSE_BATCH"),
     pools: {
       siamAntfun: POOLS.siamAntfun,
       antfunUsdt: POOLS.antfunUsdt,
@@ -155,6 +167,14 @@ export function publicConfig(config) {
       publicRiskAccepted: config.publicRpcRiskAccepted,
       ready: config.rpcPolicyVerified,
       mode: config.rpcPolicyMode,
+    },
+    monitoring: {
+      token: "SIAM",
+      holderIndexProvider: safeHostname(config.indexerRpcUrl),
+      holderRefreshMs: config.tokenHolderRefreshMs,
+      activityRefreshMs: config.tokenActivityRefreshMs,
+      activityLimit: config.tokenActivityLimit,
+      pnlScope: "indexed-analysis-window",
     },
   };
 }
@@ -223,4 +243,14 @@ function validateOrigin(value) {
   if (origin.origin !== value || (!loopback && origin.protocol !== "https:")) {
     throw new Error(`MAKER_ALLOWED_ORIGINS must use HTTPS or a loopback HTTP origin: ${value}`);
   }
+}
+
+function validateHttpsUrl(value, label) {
+  let url;
+  try { url = new URL(value); } catch { throw new Error(`${label} must be a valid URL.`); }
+  if (url.protocol !== "https:") throw new Error(`${label} must use HTTPS.`);
+}
+
+function safeHostname(value) {
+  try { return new URL(value).hostname; } catch { return null; }
 }

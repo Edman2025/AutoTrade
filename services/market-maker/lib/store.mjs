@@ -117,6 +117,25 @@ export class MakerStore {
         opening_equity_usdt_raw TEXT NOT NULL,
         created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS token_activities (
+        signature TEXT PRIMARY KEY,
+        slot INTEGER NOT NULL,
+        block_time TEXT,
+        kind TEXT NOT NULL,
+        wallet_address TEXT,
+        side TEXT,
+        token_amount_raw TEXT,
+        quote_amount_raw TEXT,
+        token_price_in_quote REAL,
+        scanned_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS token_activities_block_time ON token_activities(block_time DESC);
+      CREATE INDEX IF NOT EXISTS token_activities_wallet ON token_activities(wallet_address, block_time DESC);
+      CREATE TABLE IF NOT EXISTS monitor_cache (
+        key TEXT PRIMARY KEY,
+        captured_at TEXT NOT NULL,
+        payload TEXT NOT NULL
+      );
     `);
   }
 
@@ -130,6 +149,48 @@ export class MakerStore {
   latestSnapshot() {
     const row = this.db.prepare("SELECT payload FROM snapshots ORDER BY id DESC LIMIT 1").get();
     return row ? JSON.parse(row.payload) : null;
+  }
+
+  listSnapshotsSince(since, limit = 5_000) {
+    return this.db.prepare(`SELECT payload FROM (
+      SELECT id,payload FROM snapshots WHERE captured_at>=? ORDER BY id DESC LIMIT ?
+    ) ORDER BY id ASC`).all(since, limit).map((row) => JSON.parse(row.payload));
+  }
+
+  hasTokenActivity(signature) {
+    return Boolean(this.db.prepare("SELECT 1 FROM token_activities WHERE signature=?").get(signature));
+  }
+
+  upsertTokenActivity(activity) {
+    this.db.prepare(`INSERT INTO token_activities(
+      signature,slot,block_time,kind,wallet_address,side,token_amount_raw,quote_amount_raw,token_price_in_quote,scanned_at
+    ) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(signature) DO UPDATE SET
+      slot=excluded.slot,block_time=excluded.block_time,kind=excluded.kind,wallet_address=excluded.wallet_address,
+      side=excluded.side,token_amount_raw=excluded.token_amount_raw,quote_amount_raw=excluded.quote_amount_raw,
+      token_price_in_quote=excluded.token_price_in_quote,scanned_at=excluded.scanned_at`)
+      .run(
+        activity.signature, activity.slot, activity.blockTime ?? null, activity.kind,
+        activity.walletAddress ?? null, activity.side ?? null, activity.tokenAmountRaw ?? null,
+        activity.quoteAmountRaw ?? null, activity.tokenPriceInQuote ?? null, new Date().toISOString(),
+      );
+  }
+
+  listTokenActivities(limit = 200) {
+    return this.db.prepare(`SELECT * FROM token_activities WHERE kind='swap' ORDER BY COALESCE(block_time,'') DESC,slot DESC LIMIT ?`)
+      .all(limit).map(deserializeTokenActivity);
+  }
+
+  saveMonitorCache(key, payload) {
+    const capturedAt = new Date().toISOString();
+    this.db.prepare(`INSERT INTO monitor_cache(key,captured_at,payload) VALUES(?,?,?)
+      ON CONFLICT(key) DO UPDATE SET captured_at=excluded.captured_at,payload=excluded.payload`)
+      .run(key, capturedAt, JSON.stringify(jsonSafe(payload)));
+    return capturedAt;
+  }
+
+  getMonitorCache(key) {
+    const row = this.db.prepare("SELECT captured_at,payload FROM monitor_cache WHERE key=?").get(key);
+    return row ? { capturedAt: row.captured_at, payload: JSON.parse(row.payload) } : null;
   }
 
   createIntent({ kind, summary, unsignedTx = null, ttlMs = 60_000 }) {
@@ -449,5 +510,19 @@ function deserializeExecution(row) {
     solFeeRaw: row.sol_fee_raw,
     balanceBefore: JSON.parse(row.balance_before),
     balanceAfter: JSON.parse(row.balance_after),
+  };
+}
+
+function deserializeTokenActivity(row) {
+  return {
+    signature: row.signature,
+    slot: row.slot,
+    blockTime: row.block_time,
+    kind: row.kind,
+    walletAddress: row.wallet_address,
+    side: row.side,
+    tokenAmountRaw: row.token_amount_raw,
+    quoteAmountRaw: row.quote_amount_raw,
+    tokenPriceInQuote: row.token_price_in_quote,
   };
 }

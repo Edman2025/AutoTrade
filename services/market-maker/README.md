@@ -38,6 +38,24 @@ transactions for external wallet signing. Signed transactions are checked
 against the configured fee payer, the saved intent, and a program whitelist
 before preflight and broadcast.
 
+## Token monitoring
+
+`GET /api/public/v1/token-monitor` exposes four independently degradable,
+source-labelled datasets for the configured SIAM mint:
+
+- every positive SPL Token account aggregated by its on-chain owner;
+- confirmed SIAM/ANTFUN swaps parsed from the verified pool vault deltas;
+- profitable addresses estimated only over the locally indexed swap window;
+- seven-day liquidity and reserve history built from persisted mainnet snapshots.
+
+Set `SOLANA_INDEXER_RPC_URL` to a read-only endpoint that supports filtered
+`getProgramAccounts`. Holder results are cached in SQLite, so a temporary RPC
+failure serves the most recent successful scan as `stale` rather than inventing
+data. Public Solana RPC is suitable only as a bootstrap fallback and may be
+blocked or rate-limited in production. Complete historical address PnL requires
+an authenticated archival/indexed data provider; the built-in result is always
+labelled `analysis-window`.
+
 The admin bearer token must contain at least 32 characters. CORS accepts HTTPS
 origins and loopback HTTP origins only. The SQLite database and its directory
 are created under a restrictive process umask.

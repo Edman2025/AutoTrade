@@ -9,6 +9,7 @@ import { RiskEngine } from "./lib/risk-engine.mjs";
 import { TransactionExecutor } from "./lib/executor.mjs";
 import { VolumeAnalyticsService } from "./lib/volume-analytics.mjs";
 import { RiskAccountingService } from "./lib/risk-accounting.mjs";
+import { TokenMonitorService } from "./lib/token-monitor.mjs";
 import { jsonSafe, parseJsonBody } from "./lib/json.mjs";
 
 const config = loadConfig();
@@ -18,6 +19,7 @@ const riskEngine = new RiskEngine(config, store);
 const riskAccounting = new RiskAccountingService(config, store);
 const executor = new TransactionExecutor(config, marketData, riskEngine, store, undefined, riskAccounting);
 const volumeAnalytics = new VolumeAnalyticsService(config, store);
+const tokenMonitor = new TokenMonitorService(config, store);
 const sseClients = new Set();
 const rateBuckets = new Map();
 const publicCaches = new Map();
@@ -29,6 +31,7 @@ async function refresh() {
   refreshInFlight = marketData.capture().then((snapshot) => {
     latest = snapshot;
     store.saveSnapshot(snapshot);
+    void tokenMonitor.warm(snapshot);
     broadcast("snapshot", snapshot);
     return snapshot;
   }).catch((error) => {
@@ -80,6 +83,10 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/public/v1/token-intelligence") {
       requireRate(request, "public-token-intelligence", 30, 60_000);
       return json(response, 200, await cachedPublic("token-intelligence:SIAM", 60_000, () => marketData.tokenIntelligence("SIAM")));
+    }
+    if (request.method === "GET" && url.pathname === "/api/public/v1/token-monitor") {
+      requireRate(request, "public-token-monitor", 30, 60_000);
+      return json(response, 200, await tokenMonitor.read(latest ?? await refresh()));
     }
     if (request.method === "GET" && url.pathname === "/api/public/v1/execution-infrastructure") {
       requireRate(request, "public-execution-infrastructure", 60, 60_000);
