@@ -42,15 +42,15 @@ test("signed transaction must exactly match the saved unsigned intent", () => {
 });
 
 test("approved bridge route is deterministic in both directions", () => {
-  assert.deepEqual(routePlan("USDT").map((leg) => leg.pool), ["antfunUsdt", "bgAntfun"]);
-  assert.deepEqual(routePlan("BG").map((leg) => leg.pool), ["bgAntfun", "antfunUsdt"]);
-  assert.throws(() => routePlan("SOL"), /BG or USDT/);
+  assert.deepEqual(routePlan("USDT").map((leg) => leg.pool), ["antfunUsdt", "siamAntfun"]);
+  assert.deepEqual(routePlan("SIAM").map((leg) => leg.pool), ["siamAntfun", "antfunUsdt"]);
+  assert.throws(() => routePlan("SOL"), /SIAM or USDT/);
 });
 
 test("route quote chains each protected minimum into the next leg", async () => {
   const pools = {
     antfunUsdt: { tokenX: "ANTFUN", tokenY: "USDT", kind: "dlmm" },
-    bgAntfun: { tokenX: "BG", tokenY: "ANTFUN", kind: "damm-v2" },
+    siamAntfun: { tokenX: "SIAM", tokenY: "ANTFUN", kind: "damm-v2" },
   };
   const executor = new TransactionExecutor(
     { mode: "observe", rpcUrl: "http://127.0.0.1:9", walletAddress: null, pools, risk: { maxSlippageBps: 100 } },
@@ -75,14 +75,14 @@ test("a confirmed single swap is recovered without rebroadcast and updates accou
   try {
     const intent = store.createIntent({
       kind: "swap",
-      summary: { action: { kind: "swap", inputSymbol: "BG", outputSymbol: "ANTFUN" } },
+      summary: { action: { kind: "swap", inputSymbol: "SIAM", outputSymbol: "ANTFUN" } },
       unsignedTx: "unsigned",
     });
     store.approveIntent(intent.id);
     const balanceBefore = { solRaw: "100", tokenAccounts: [] };
     store.markIntentSubmitted(intent.id, "confirmed-signature", balanceBefore);
     const execution = {
-      inputSymbol: "BG", outputSymbol: "ANTFUN", amountInRaw: "10", amountOutRaw: "9",
+      inputSymbol: "SIAM", outputSymbol: "ANTFUN", amountInRaw: "10", amountOutRaw: "9",
       notionalUsdtRaw: "10", realizedPnlUsdtRaw: "0", solFeeRaw: "1",
       balanceBefore, balanceAfter: { solRaw: "99", tokenAccounts: [] }, costBasisUpdates: [],
     };

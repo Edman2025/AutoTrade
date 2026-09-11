@@ -1,6 +1,7 @@
 # Mainnet evidence record
 
-Checked on 2026-08-27. Values such as TVL and volume are observations, not
+Checked on 2026-08-27 and refreshed for the monitored token on 2026-09-11.
+Values such as TVL and volume are observations, not
 constants; pool identities and mint pairs are revalidated by the service.
 
 ## Bingan / Meteora mechanism
@@ -20,16 +21,16 @@ Official implementation references:
 
 ## Supported assets
 
-- BG mint: `HSkHx26EFANEcBjrmN4H8uAmRFCFGUn5uoRMh9bgxgan`
+- 暹罗币 mint: `EFQcTNWXTtjMBQfHt7R5EQFpq8X2agwKeA43DfVrkgan`
 - ANTFUN mint: `CWZ6BsdnjkDVTGkmL6bGbJXXig6ceef12KvyGQW14cMt`
 - USDT mint: `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB`
 
-## Verified BG main pool
+## Verified monitored-token main pool
 
-- BG/ANTFUN DAMM v2:
-  `AJJxmAV2C2WTHVHD4FEP71Vt8Rdu5day1v4Pr1FJPXEy`
+- 暹罗币/ANTFUN DAMM v2:
+  `EJhr4va8YcksrUhDAMrTH6yeZUBZKzen2KYEaiLJNFPe`
 - Program: `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG`
-- Expected pair: exact BG and ANTFUN mints above
+- Expected pair: exact 暹罗币 and ANTFUN mints above
 
 The service does not trust the address alone. It verifies the on-chain account
 owner, both pool mints, enabled state, vault balances, and executable quotes.
@@ -65,17 +66,18 @@ For completeness, an earlier investigation also observed a SOL/USDT DLMM pool at
 the same check it had about $3.2K indexed TVL and $14.1K indexed 24-hour volume.
 This historical observation is not part of the approved topology.
 
-On 2026-08-27 the operator subsequently removed the SOL/USDT leg and explicitly
-approved only:
+On 2026-09-11 the operator changed the monitored asset. After fresh on-chain
+owner, mint-pair, vault-balance, enabled-state, and two-way quote verification,
+the approved topology became:
 
-`BG/ANTFUN ↔ ANTFUN/USDT`
+`暹罗币/ANTFUN ↔ ANTFUN/USDT`
 
 SOL remains a native network-fee reserve only. This decision does not authorize
 a particular trade or relax any risk limit.
 
 ## Recorded decision
 
-The fixed production topology is now the two-pool USDT-denominated route above.
+The fixed production topology is the two-pool USDT-denominated route above.
 Live execution still requires a reliable private RPC, a public
 operator wallet, fresh on-chain verification, portfolio accounting, external
 signing, and action-specific approval.

@@ -79,7 +79,7 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/v1/accounting") return json(response, 200, riskAccounting.read(latest));
     if (request.method === "GET" && url.pathname === "/api/public/v1/token-intelligence") {
       requireRate(request, "public-token-intelligence", 30, 60_000);
-      return json(response, 200, await cachedPublic("token-intelligence:BG", 60_000, () => marketData.tokenIntelligence("BG")));
+      return json(response, 200, await cachedPublic("token-intelligence:SIAM", 60_000, () => marketData.tokenIntelligence("SIAM")));
     }
     if (request.method === "GET" && url.pathname === "/api/public/v1/execution-infrastructure") {
       requireRate(request, "public-execution-infrastructure", 60, 60_000);
@@ -335,7 +335,7 @@ async function quoteBatch(body) {
     const id = typeof action?.id === "string" && action.id.length <= 64 ? action.id : `row-${index + 1}`;
     try {
       if (action?.kind !== "route-swap") throw new Error("Only the fixed two-pool route is supported.");
-      if (!["BG", "USDT"].includes(action.inputSymbol)) throw new Error("inputSymbol must be BG or USDT.");
+      if (!["SIAM", "USDT"].includes(action.inputSymbol)) throw new Error("inputSymbol must be SIAM or USDT.");
       if (!/^\d+$/.test(String(action.amountInRaw ?? "")) || BigInt(action.amountInRaw) <= 0n) throw new Error("amountInRaw must be a positive integer.");
       const quote = await executor.routeQuote(action, { snapshot: riskSnapshot, walletSolRaw });
       results.push({ id, ok: true, quote });
@@ -348,7 +348,7 @@ async function quoteBatch(body) {
     atomic: false,
     signingMode: "external",
     broadcastEnabled: false,
-    route: "BG↔ANTFUN↔USDT",
+    route: "SIAM↔ANTFUN↔USDT",
     total: results.length,
     passed: results.filter((item) => item.ok && item.quote?.risk?.passed).length,
     failed: results.filter((item) => !item.ok || !item.quote?.risk?.passed).length,

@@ -47,7 +47,7 @@ test("risk engine blocks stale quotes and excessive impact", () => {
   const store = new MakerStore(":memory:");
   try {
     const engine = new RiskEngine(config, store);
-    const result = engine.evaluate({ inputSymbol: "BG", amountInRaw: "1000000", slippageBps: 50 }, {
+    const result = engine.evaluate({ inputSymbol: "SIAM", amountInRaw: "1000000", slippageBps: 50 }, {
       quotedAt: new Date(Date.now() - 60_000).toISOString(),
       priceImpactBps: 500,
       identityVerified: true,

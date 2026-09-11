@@ -44,8 +44,8 @@ export class MarketDataService {
     const pools = {};
     const errors = [];
 
-    try { pools.bgAntfun = await this.snapshotDammV2(this.config.pools.bgAntfun, slot, blockTime); }
-    catch (error) { errors.push({ pool: "BG/ANTFUN", error: messageOf(error) }); }
+    try { pools.siamAntfun = await this.snapshotDammV2(this.config.pools.siamAntfun, slot, blockTime); }
+    catch (error) { errors.push({ pool: "暹罗币/ANTFUN", error: messageOf(error) }); }
 
     try { pools.antfunUsdt = await this.snapshotDlmm(this.config.pools.antfunUsdt, slot); }
     catch (error) { errors.push({ pool: "ANTFUN/USDT", error: messageOf(error) }); }
@@ -59,7 +59,7 @@ export class MarketDataService {
     for (const pool of Object.values(pools)) pool.executable = poolExecutable(pool);
 
     const topologyReady = Boolean(
-      pools.bgAntfun?.executable
+      pools.siamAntfun?.executable
       && pools.antfunUsdt?.executable,
     );
     return jsonSafe({
@@ -243,7 +243,7 @@ export class MarketDataService {
     };
   }
 
-  async tokenIntelligence(symbol = "BG") {
+  async tokenIntelligence(symbol = "SIAM") {
     const token = TOKENS[symbol];
     if (!token) throw Object.assign(new Error(`Unsupported token symbol: ${symbol}`), { statusCode: 400 });
     const mint = new PublicKey(token.mint);
@@ -537,13 +537,13 @@ function serializeDlmmPosition(item) {
 }
 
 export function impliedPrices(pools) {
-  const bg = pools.bgAntfun?.price;
+  const siam = pools.siamAntfun?.price;
   const antfunUsdt = pools.antfunUsdt?.price;
-  if (!bg || !antfunUsdt) return null;
-  const bgInAntfun = priceFor(bg, "BG");
+  if (!siam || !antfunUsdt) return null;
+  const siamInAntfun = priceFor(siam, "SIAM");
   const antfunInUsdt = priceFor(antfunUsdt, "ANTFUN");
-  if (![bgInAntfun, antfunInUsdt].every((value) => Number.isFinite(value) && value > 0)) return null;
-  return { bgInAntfun, antfunInUsdt, bgInUsdt: bgInAntfun * antfunInUsdt };
+  if (![siamInAntfun, antfunInUsdt].every((value) => Number.isFinite(value) && value > 0)) return null;
+  return { siamInAntfun, antfunInUsdt, siamInUsdt: siamInAntfun * antfunInUsdt };
 }
 
 function priceFor(price, symbol) {

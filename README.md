@@ -17,10 +17,12 @@ npm run maker:serve
 ```
 
 Current mainnet evidence does not support a liquid direct ANTFUN/SOL main pool.
-The operator has approved only the stablecoin-denominated two-pool topology
-`BG/ANTFUN ↔ ANTFUN/USDT`; SOL is retained only as the wallet's native fee
-reserve and is not a quoting, routing, valuation, or market-making asset. The live gate remains closed until the
-private RPC, public wallet, accounting, and dependency-security gates pass. See
+The currently monitored asset is 暹罗币
+(`EFQcTNWXTtjMBQfHt7R5EQFpq8X2agwKeA43DfVrkgan`). Its fixed production
+topology is `暹罗币/ANTFUN ↔ ANTFUN/USDT`; SOL is retained only as the wallet's
+native fee reserve and is not a quoting, routing, valuation, or market-making
+asset. Execution remains subject to the configured RPC, public-wallet,
+accounting, external-signing, and dependency-security gates. See
 `services/market-maker/README.md` for the
 verified pool findings, operating modes, deployment gates, and environment
 variables; `services/market-maker/RUNBOOK.md` contains the operator procedure

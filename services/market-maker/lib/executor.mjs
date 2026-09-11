@@ -498,7 +498,7 @@ function normalizeAction(action, config) {
 
 function normalizeRouteAction(action, config) {
   if (!action || action.kind !== "route-swap") throw Object.assign(new Error("kind must equal route-swap."), { statusCode: 400 });
-  if (!["BG", "USDT"].includes(action.inputSymbol)) throw Object.assign(new Error("Route inputSymbol must be BG or USDT."), { statusCode: 400 });
+  if (!["SIAM", "USDT"].includes(action.inputSymbol)) throw Object.assign(new Error("Route inputSymbol must be SIAM or USDT."), { statusCode: 400 });
   if (!/^\d+$/.test(String(action.amountInRaw)) || BigInt(action.amountInRaw) <= 0n) throw Object.assign(new Error("amountInRaw must be a positive base-unit integer."), { statusCode: 400 });
   const slippageBps = Number(action.slippageBps);
   if (!Number.isInteger(slippageBps) || slippageBps < 1 || slippageBps > config.risk.maxSlippageBps) throw Object.assign(new Error("slippageBps is outside the configured range."), { statusCode: 400 });
@@ -508,13 +508,13 @@ function normalizeRouteAction(action, config) {
 export function routePlan(inputSymbol) {
   if (inputSymbol === "USDT") return [
     { pool: "antfunUsdt", inputSymbol: "USDT", outputSymbol: "ANTFUN" },
-    { pool: "bgAntfun", inputSymbol: "ANTFUN", outputSymbol: "BG" },
+    { pool: "siamAntfun", inputSymbol: "ANTFUN", outputSymbol: "SIAM" },
   ];
-  if (inputSymbol === "BG") return [
-    { pool: "bgAntfun", inputSymbol: "BG", outputSymbol: "ANTFUN" },
+  if (inputSymbol === "SIAM") return [
+    { pool: "siamAntfun", inputSymbol: "SIAM", outputSymbol: "ANTFUN" },
     { pool: "antfunUsdt", inputSymbol: "ANTFUN", outputSymbol: "USDT" },
   ];
-  throw new Error("Route inputSymbol must be BG or USDT.");
+  throw new Error("Route inputSymbol must be SIAM or USDT.");
 }
 
 function tailLogs(logs) { return Array.isArray(logs) ? logs.slice(-30) : []; }

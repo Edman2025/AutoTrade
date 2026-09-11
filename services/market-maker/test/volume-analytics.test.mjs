@@ -18,7 +18,7 @@ test("groups official hourly buckets by Beijing calendar day", () => {
 test("values executed intents only when a USDT side is recorded", () => {
   assert.equal(estimateIntentNotionalUsd({ summary: { action: { inputSymbol: "USDT", amountInRaw: "1250000" }, quote: {} } }), 1.25);
   assert.equal(estimateIntentNotionalUsd({ summary: { action: { inputSymbol: "ANTFUN" }, quote: { outputSymbol: "USDT", expectedOutUi: "9.75" } } }), 9.75);
-  assert.equal(estimateIntentNotionalUsd({ summary: { action: { inputSymbol: "BG" }, quote: { outputSymbol: "ANTFUN", expectedOutUi: "100" } } }), null);
+  assert.equal(estimateIntentNotionalUsd({ summary: { action: { inputSymbol: "SIAM" }, quote: { outputSymbol: "ANTFUN", expectedOutUi: "100" } } }), null);
 });
 
 test("fetches long histories in bounded official API chunks and removes boundary duplicates", async () => {

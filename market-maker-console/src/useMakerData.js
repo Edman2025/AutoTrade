@@ -23,9 +23,21 @@ export function useMakerData() {
         fetch(`${API_BASE}/api/v1/audit?limit=100`, { cache: "no-store" }),
         fetch(`${API_BASE}/api/v1/intents?limit=100`, { cache: "no-store" }),
       ]);
-      const responses = [healthResponse, configResponse, snapshotResponse, volumeResponse, accountingResponse, intelligenceResponse, infrastructureResponse, auditResponse, intentsResponse];
-      if (responses.some((response) => !response.ok)) throw new Error(`API ${responses.map((response) => response.status).join("/")}`);
-      const [health, config, snapshot, volume, accounting, tokenIntelligence, executionInfrastructure, audit, intents] = await Promise.all(responses.map((response) => response.json()));
+      const coreResponses = [healthResponse, configResponse, snapshotResponse];
+      if (coreResponses.some((response) => !response.ok)) throw new Error(`核心监控 API ${coreResponses.map((response) => response.status).join("/")}`);
+      const optionalResponses = [volumeResponse, accountingResponse, intelligenceResponse, infrastructureResponse, auditResponse, intentsResponse];
+      const optionalFailures = optionalResponses.filter((response) => !response.ok).map((response) => response.status);
+      const [health, config, snapshot, volume, accounting, tokenIntelligence, executionInfrastructure, audit, intents] = await Promise.all([
+        healthResponse.json(),
+        configResponse.json(),
+        snapshotResponse.json(),
+        volumeResponse.ok ? volumeResponse.json() : null,
+        accountingResponse.ok ? accountingResponse.json() : null,
+        intelligenceResponse.ok ? intelligenceResponse.json() : null,
+        infrastructureResponse.ok ? infrastructureResponse.json() : null,
+        auditResponse.ok ? auditResponse.json() : null,
+        intentsResponse.ok ? intentsResponse.json() : null,
+      ]);
       if (!mountedRef.current) return;
       setState((current) => ({
         ...current,
@@ -33,13 +45,13 @@ export function useMakerData() {
         health,
         config,
         snapshot: newerSnapshot(current.snapshot, snapshot),
-        volume,
-        accounting,
-        tokenIntelligence,
-        executionInfrastructure,
-        audit: audit.events ?? [],
-        intents: intents.intents ?? [],
-        error: null,
+        volume: volume ?? current.volume,
+        accounting: accounting ?? current.accounting,
+        tokenIntelligence: tokenIntelligence ?? current.tokenIntelligence,
+        executionInfrastructure: executionInfrastructure ?? current.executionInfrastructure,
+        audit: audit?.events ?? current.audit,
+        intents: intents?.intents ?? current.intents,
+        error: optionalFailures.length ? `部分辅助 API 暂时不可用（${optionalFailures.join("/")}），核心监控仍在运行。` : null,
         updatedAt: new Date().toISOString(),
       }));
     } catch (error) {

@@ -15,7 +15,7 @@ export class RiskEngine {
     if (control.consecutiveFailures >= risk.maxConsecutiveFailures) reasons.push("Consecutive failure circuit breaker is open.");
     if (control.lastExecutionAt && now - Date.parse(control.lastExecutionAt) < risk.cooldownMs) reasons.push("Execution cooldown is active.");
     if (!context.identityVerified) reasons.push("Pool identity or program whitelist verification failed.");
-    if (!context.topologyVerified) reasons.push("The complete BG/ANTFUN and ANTFUN/USDT topology is not verified.");
+    if (!context.topologyVerified) reasons.push("The complete SIAM/ANTFUN and ANTFUN/USDT topology is not verified.");
     if (this.config.mode === "live" && !context.rpcPolicyVerified) reasons.push("Live execution requires either an authenticated private RPC or an explicit public-RPC risk acceptance.");
     if (this.config.mode === "live" && !context.walletIdentityVerified) reasons.push("The configured maker wallet is not verified as a funded Solana mainnet system account.");
     if (now - Date.parse(context.quotedAt) > risk.quoteStaleMs) reasons.push("Quote is stale.");
@@ -24,7 +24,7 @@ export class RiskEngine {
     if (context.walletSolRaw != null && BigInt(context.walletSolRaw) < risk.minSolReserveRaw) reasons.push("SOL fee reserve is below its floor.");
 
     const inputRaw = BigInt(action.amountInRaw);
-    if (action.inputSymbol === "BG" && inputRaw > risk.maxTradeBgRaw) reasons.push("BG trade size exceeds the single-trade limit.");
+    if (action.inputSymbol === "SIAM" && inputRaw > risk.maxTradeSiamRaw) reasons.push("SIAM trade size exceeds the single-trade limit.");
     if (action.inputSymbol === "ANTFUN" && inputRaw > risk.maxTradeAntfunRaw) reasons.push("ANTFUN trade size exceeds the single-trade limit.");
     if (action.inputSymbol === "USDT" && inputRaw > risk.maxTradeUsdtRaw) reasons.push("USDT trade size exceeds the single-trade limit.");
     if (context.sufficientInputBalance === false) reasons.push("Configured wallet balance is below the approved input amount.");

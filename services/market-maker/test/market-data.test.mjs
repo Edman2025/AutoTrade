@@ -16,13 +16,13 @@ test("rejects invalid price impact values", () => {
 test("aggregates only supported public token accounts without floating point", () => {
   const parsed = (mint, amount) => ({ account: { data: { parsed: { info: { mint, tokenAmount: { amount } } } } } });
   const accounts = aggregateParsedTokenAccounts([
-    parsed("HSkHx26EFANEcBjrmN4H8uAmRFCFGUn5uoRMh9bgxgan", "1000001"),
-    parsed("HSkHx26EFANEcBjrmN4H8uAmRFCFGUn5uoRMh9bgxgan", "2000002"),
+    parsed("EFQcTNWXTtjMBQfHt7R5EQFpq8X2agwKeA43DfVrkgan", "1000001"),
+    parsed("EFQcTNWXTtjMBQfHt7R5EQFpq8X2agwKeA43DfVrkgan", "2000002"),
     parsed("11111111111111111111111111111111", "999"),
   ]);
   assert.deepEqual(accounts, [{
-    symbol: "BG",
-    mint: "HSkHx26EFANEcBjrmN4H8uAmRFCFGUn5uoRMh9bgxgan",
+    symbol: "SIAM",
+    mint: "EFQcTNWXTtjMBQfHt7R5EQFpq8X2agwKeA43DfVrkgan",
     decimals: 6,
     amountRaw: "3000003",
     amountUi: "3.000003",
@@ -30,14 +30,14 @@ test("aggregates only supported public token accounts without floating point", (
   }]);
 });
 
-test("derives the BG USDT price through the approved two-pool topology", () => {
+test("derives the SIAM USDT price through the approved two-pool topology", () => {
   const prices = impliedPrices({
-    bgAntfun: { price: { base: "BG", quote: "ANTFUN", baseInQuote: 0.03, quoteInBase: 33.333333 } },
+    siamAntfun: { price: { base: "SIAM", quote: "ANTFUN", baseInQuote: 0.03, quoteInBase: 33.333333 } },
     antfunUsdt: { price: { base: "ANTFUN", quote: "USDT", baseInQuote: 0.02, quoteInBase: 50 } },
   });
-  assert.equal(prices.bgInAntfun, 0.03);
+  assert.equal(prices.siamInAntfun, 0.03);
   assert.equal(prices.antfunInUsdt, 0.02);
-  assert.ok(Math.abs(prices.bgInUsdt - 0.0006) < 1e-15);
+  assert.ok(Math.abs(prices.siamInUsdt - 0.0006) < 1e-15);
 });
 
 test("pool execution readiness requires identity, reserves, and two-way quotes", () => {
@@ -74,7 +74,7 @@ test("token intelligence reports authorities and exact holder concentration", as
       { address: { toBase58: () => "largest-2" }, amount: "25000000", uiAmountString: "25" },
     ] }),
   };
-  const result = await service.tokenIntelligence("BG");
+  const result = await service.tokenIntelligence("SIAM");
   assert.equal(result.authoritiesRevoked, true);
   assert.equal(result.concentration.top1Bps, 5_000);
   assert.equal(result.concentration.top5Bps, 7_500);

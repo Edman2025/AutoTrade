@@ -36,12 +36,12 @@ import {
 } from "@phosphor-icons/react";
 
 const pageMeta = {
-  "池总览": [CirclesFour, "池总览", "BG/ANTFUN 与 ANTFUN/USDT 两池主网拓扑；SOL 仅作手续费储备。"],
+  "池总览": [CirclesFour, "池总览", "暹罗币/ANTFUN 与 ANTFUN/USDT 两池主网拓扑；SOL 仅作手续费储备。"],
   "流动性仓位": [Database, "流动性仓位", "仅显示配置钱包公开拥有的真实 Position NFT。"],
   "成交增长": [ChartLineUp, "成交增长", "观察真实 Swap、流动性深度和自然成交质量；不生成对敲或虚假成交。"],
-  "持有人洞察": [Scan, "持有人洞察", "读取 BG Mint 权限、供应量与最大账户分布；不批量制造虚假持有人。"],
-  "买方库存执行": [TrendUp, "买方库存执行", "将 USDT→ANTFUN→BG 拆分为受风控保护的库存补充计划；不设价格拉升目标。"],
-  "卖方库存执行": [TrendDown, "卖方库存执行", "将 BG→ANTFUN→USDT 拆分为受风控保护的库存降低计划；不设价格打压目标。"],
+  "持有人洞察": [Scan, "持有人洞察", "读取暹罗币 Mint 权限、供应量与最大账户分布；不批量制造虚假持有人。"],
+  "买方库存执行": [TrendUp, "买方库存执行", "将 USDT→ANTFUN→暹罗币拆分为受风控保护的库存补充计划；不设价格拉升目标。"],
+  "卖方库存执行": [TrendDown, "卖方库存执行", "将暹罗币→ANTFUN→USDT拆分为受风控保护的库存降低计划；不设价格打压目标。"],
   "库存与损益": [ChartLineUp, "库存与损益", "损益必须由链上仓位和执行账本计算，不使用界面模拟值。"],
   "自动化策略": [SlidersHorizontal, "自动化策略", "策略状态由服务端控制；浏览器不保存管理员密钥。"],
   "钱包与资金": [Wallet, "钱包与资金", "只读取配置的公开地址；助记词和私钥永不进入本系统。"],
@@ -94,7 +94,7 @@ function Overview({ maker }) {
       <Metric label="执行状态" value={maker.health?.paused ? "已暂停" : "可运行"} note={maker.status === "live" ? "两池拓扑通过" : "拓扑未就绪"} tone={maker.status === "live" ? "ok" : "warn"} />
     </div>
     <section className="ops-grid ops-grid--pools">
-      <PoolCard name="BG / ANTFUN" expected={maker.config?.pools?.bgAntfun} pool={pools.bgAntfun} />
+      <PoolCard name="暹罗币 / ANTFUN" expected={maker.config?.pools?.siamAntfun} pool={pools.siamAntfun} />
       <PoolCard name="ANTFUN / USDT" expected={maker.config?.pools?.antfunUsdt} pool={pools.antfunUsdt} />
     </section>
     <Blockers maker={maker} />
@@ -114,7 +114,7 @@ function PoolCard({ name, expected, pool }) {
         <Row label="池开关" value={pool ? (pool.enabled ? "Enabled" : "Disabled") : "—"} />
       </dl>
       <div className="ops-reserves">
-        {reserves.length ? reserves.map((reserve) => <div key={reserve.mint}><span>{reserve.symbol}</span><strong>{amount(reserve.amountUi)}</strong><small>链上 vault 余额</small></div>) : <Empty compact>未取得可验证的链上储备</Empty>}
+        {reserves.length ? reserves.map((reserve) => <div key={reserve.mint}><span>{displaySymbol(reserve.symbol)}</span><strong>{amount(reserve.amountUi)}</strong><small>链上 vault 余额</small></div>) : <Empty compact>未取得可验证的链上储备</Empty>}
       </div>
     </article>
   );
@@ -132,7 +132,7 @@ function Intents({ maker }) {
   return <>
     <div className="ops-metrics">
       <Metric label="今日池成交额" value={volume ? usd(volume.today?.totalUsd) : "—"} note="官方索引 · 两池全量" tone="ok" />
-      <Metric label="BG / ANTFUN" value={volume ? usd(volume.today?.pools?.bgAntfun) : "—"} note="今日池级成交额" />
+      <Metric label="暹罗币 / ANTFUN" value={volume ? usd(volume.today?.pools?.siamAntfun) : "—"} note="今日池级成交额" />
       <Metric label="ANTFUN / USDT" value={volume ? usd(volume.today?.pools?.antfunUsdt) : "—"} note="今日池级成交额" />
       <Metric label="系统今日执行量" value={volume ? usd(volume.today?.systemUsd) : "—"} note={`${volume?.today?.systemExecutions ?? 0} 笔 · 与池全量分开`} />
     </div>
@@ -145,8 +145,8 @@ function Intents({ maker }) {
 
 function InventoryExecution({ maker, side }) {
   const isBuy = side === "buy";
-  const inputSymbol = isBuy ? "USDT" : "BG";
-  const outputSymbol = isBuy ? "BG" : "USDT";
+  const inputSymbol = isBuy ? "USDT" : "SIAM";
+  const outputSymbol = isBuy ? "SIAM" : "USDT";
   const [amountUi, setAmountUi] = useState(isBuy ? "1" : "100");
   const [slices, setSlices] = useState(4);
   const [intervalMinutes, setIntervalMinutes] = useState(5);
@@ -187,8 +187,8 @@ function InventoryExecution({ maker, side }) {
     const quote = item.quote;
     return [
       `${index + 1}`,
-      `${rawToDecimal(quote.action.amountInRaw, 6)} ${inputSymbol}`,
-      `${rawToDecimal(quote.minOutRaw, 6)} ${outputSymbol}`,
+      `${rawToDecimal(quote.action.amountInRaw, 6)} ${displaySymbol(inputSymbol)}`,
+      `${rawToDecimal(quote.minOutRaw, 6)} ${displaySymbol(outputSymbol)}`,
       bps(quote.compoundedSlippageBps),
       quote.risk?.passed ? "通过" : quote.risk?.reasons?.map(riskReasonZh).join("；") || "阻断",
     ];
@@ -196,7 +196,7 @@ function InventoryExecution({ maker, side }) {
 
   return <>
     <div className="ops-metrics">
-      <Metric label="固定方向" value={`${inputSymbol} → ${outputSymbol}`} note={`${inputSymbol} → ANTFUN → ${outputSymbol}`} tone="ok" />
+      <Metric label="固定方向" value={`${displaySymbol(inputSymbol)} → ${displaySymbol(outputSymbol)}`} note={`${displaySymbol(inputSymbol)} → ANTFUN → ${displaySymbol(outputSymbol)}`} tone="ok" />
       <Metric label="拆分批次" value={`${slices} 批`} note="每批独立报价与风控" />
       <Metric label="建议间隔" value={`${intervalMinutes} 分钟`} note="外部执行端参考，不自动定时广播" />
       <Metric label="单腿滑点上限" value={bps(slippageBps)} note="服务端硬上限，不可在页面放宽" />
@@ -207,12 +207,12 @@ function InventoryExecution({ maker, side }) {
     <section className="ops-card inventory-execution-card">
       <CardTitle icon={isBuy ? TrendUp : TrendDown} title={isBuy ? "买方库存拆分计划" : "卖方库存拆分计划"} note="主网报价 · 外部签名 · 不自动广播" />
       <div className="inventory-execution-form">
-        <label><span>总输入数量</span><div><input value={amountUi} inputMode="decimal" onChange={(event) => setAmountUi(event.target.value.replace(/[^0-9.]/g, ""))} /><b>{inputSymbol}</b></div></label>
+        <label><span>总输入数量</span><div><input value={amountUi} inputMode="decimal" onChange={(event) => setAmountUi(event.target.value.replace(/[^0-9.]/g, ""))} /><b>{displaySymbol(inputSymbol)}</b></div></label>
         <label><span>拆分批次</span><select value={slices} onChange={(event) => setSlices(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option value={index + 1} key={index + 1}>{index + 1} 批</option>)}</select></label>
         <label><span>批次间隔</span><select value={intervalMinutes} onChange={(event) => setIntervalMinutes(Number(event.target.value))}>{[1, 2, 5, 10, 15, 30, 60].map((value) => <option value={value} key={value}>{value} 分钟</option>)}</select></label>
         <button className="button button--primary" type="button" onClick={quotePlan} disabled={loading}>{loading ? "生成计划中…" : "生成主网报价计划"}<ArrowRight size={15} /></button>
       </div>
-      <div className="inventory-plan-note"><Clock size={16} /><span>预计计划时长 <strong>{Math.max(0, (Number(slices) - 1) * Number(intervalMinutes))} 分钟</strong></span><span>执行方式 <strong>逐批人工批准 / 外部签名</strong></span><span>路由 <strong>{inputSymbol} → ANTFUN → {outputSymbol}</strong></span></div>
+      <div className="inventory-plan-note"><Clock size={16} /><span>预计计划时长 <strong>{Math.max(0, (Number(slices) - 1) * Number(intervalMinutes))} 分钟</strong></span><span>执行方式 <strong>逐批人工批准 / 外部签名</strong></span><span>路由 <strong>{displaySymbol(inputSymbol)} → ANTFUN → {displaySymbol(outputSymbol)}</strong></span></div>
       {error && <div className="ops-quote-error"><Warning size={16} weight="fill" />{error}</div>}
       {result && <><div className="ops-route-summary"><div><span>计划批次</span><strong>{result.total}</strong></div><div><span>通过风控</span><strong className="is-positive">{result.passed}</strong></div><div><span>阻断 / 失败</span><strong className={result.failed ? "is-warning" : "is-positive"}>{result.failed}</strong></div></div><DataTable headers={["批次", "输入", "最低可得", "串联滑点", "风控结论"]} rows={planRows} /></>}
       {!result && !error && <Empty compact>输入总量并生成计划后，系统会对每一批调用真实双池主网报价；不会创建或广播交易。</Empty>}
@@ -225,7 +225,7 @@ function VolumeTrend({ volume }) {
   const chartData = (volume.daily ?? []).map((row) => ({
     ...row,
     label: row.date?.slice(5),
-    bgAntfun: row.pools?.bgAntfun ?? 0,
+    siamAntfun: row.pools?.siamAntfun ?? 0,
     antfunUsdt: row.pools?.antfunUsdt ?? 0,
   }));
   const sourceState = volume.status === "ready" ? "官方索引正常" : volume.status === "stale" ? "正在显示缓存" : "部分数据降级";
@@ -240,7 +240,7 @@ function VolumeTrend({ volume }) {
             <YAxis tickFormatter={compactUsdAxis} tick={{ fill: "#8995a8", fontSize: 12 }} tickLine={false} axisLine={false} width={58} />
             <Tooltip content={<VolumeTooltip />} cursor={{ stroke: "#63718a", strokeDasharray: "4 4" }} />
             <Line type="monotone" dataKey="antfunUsdt" name="ANTFUN / USDT" stroke="#42d7ae" strokeWidth={2.4} dot={{ r: 2.5 }} activeDot={{ r: 4 }} />
-            <Line type="monotone" dataKey="bgAntfun" name="BG / ANTFUN" stroke="#a77df6" strokeWidth={2.4} dot={{ r: 2.5 }} activeDot={{ r: 4 }} />
+            <Line type="monotone" dataKey="siamAntfun" name="暹罗币 / ANTFUN" stroke="#a77df6" strokeWidth={2.4} dot={{ r: 2.5 }} activeDot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -250,7 +250,7 @@ function VolumeTrend({ volume }) {
         <div><span>官方索引最后小时桶</span><strong>{volume.lastBucketAt ? hour(volume.lastBucketAt) : "—"}</strong><small>Meteora 小时聚合可能存在延迟</small></div>
       </aside>
     </div>
-    <div className="ops-volume-footnote"><span><i className="ops-series ops-series--green" />ANTFUN / USDT</span><span><i className="ops-series ops-series--violet" />BG / ANTFUN</span><b>来源：Meteora Data API · 池全量与系统执行量已分离</b></div>
+    <div className="ops-volume-footnote"><span><i className="ops-series ops-series--green" />ANTFUN / USDT</span><span><i className="ops-series ops-series--violet" />暹罗币 / ANTFUN</span><b>来源：Meteora Data API · 池全量与系统执行量已分离</b></div>
     {volume.errors?.length ? <div className="ops-quote-error"><Warning size={16} weight="fill" />{volume.errors.join("；")}</div> : null}
   </section>;
 }
@@ -284,9 +284,9 @@ function RouteQuote({ maker }) {
     finally { setLoading(false); }
   }
   return <section className="ops-card"><CardTitle icon={Swap} title="两池路径实时报价" note={`每腿 ${bps(slippageBps)} 滑点保护 · 公开端点限速 · 不返回交易`} />
-    <div className="ops-quote-form"><label><span>方向</span><select value={inputSymbol} onChange={(event) => { const value = event.target.value; setInputSymbol(value); setAmountUi(value === "USDT" ? "1" : "100"); }}><option value="USDT">USDT → ANTFUN → BG</option><option value="BG">BG → ANTFUN → USDT</option></select></label><label><span>输入数量</span><input value={amountUi} inputMode="decimal" onChange={(event) => setAmountUi(event.target.value.replace(/[^0-9.]/g, ""))} /><b>{inputSymbol}</b></label><button className="button button--primary" onClick={quote} disabled={loading}>{loading ? "报价中…" : "获取主网报价"}</button></div>
+    <div className="ops-quote-form"><label><span>方向</span><select value={inputSymbol} onChange={(event) => { const value = event.target.value; setInputSymbol(value); setAmountUi(value === "USDT" ? "1" : "100"); }}><option value="USDT">USDT → ANTFUN → 暹罗币</option><option value="SIAM">暹罗币 → ANTFUN → USDT</option></select></label><label><span>输入数量</span><input value={amountUi} inputMode="decimal" onChange={(event) => setAmountUi(event.target.value.replace(/[^0-9.]/g, ""))} /><b>{displaySymbol(inputSymbol)}</b></label><button className="button button--primary" onClick={quote} disabled={loading}>{loading ? "报价中…" : "获取主网报价"}</button></div>
     {error && <div className="ops-quote-error"><Warning size={16} weight="fill" />{error}</div>}
-    {result && <><div className="ops-route-summary"><div><span>最终最低可得</span><strong>{rawToDecimal(result.minOutRaw, 6)} {result.outputSymbol}</strong></div><div><span>串联滑点上限</span><strong>{bps(result.compoundedSlippageBps)}</strong></div><div><span>执行风控</span><strong>{result.risk?.passed ? "通过" : "阻断"}</strong></div></div><DataTable headers={["腿", "池", "输入", "预计输出", "最低输出", "价格影响"]} rows={result.legs.map((leg, index) => [`${index + 1}`, leg.pool, `${leg.quote.amountInUi} ${leg.inputSymbol}`, `${leg.quote.expectedOutUi} ${leg.outputSymbol}`, `${leg.quote.minOutUi} ${leg.outputSymbol}`, bps(leg.quote.priceImpactBps)])} /></>}
+    {result && <><div className="ops-route-summary"><div><span>最终最低可得</span><strong>{rawToDecimal(result.minOutRaw, 6)} {displaySymbol(result.outputSymbol)}</strong></div><div><span>串联滑点上限</span><strong>{bps(result.compoundedSlippageBps)}</strong></div><div><span>执行风控</span><strong>{result.risk?.passed ? "通过" : "阻断"}</strong></div></div><DataTable headers={["腿", "池", "输入", "预计输出", "最低输出", "价格影响"]} rows={result.legs.map((leg, index) => [`${index + 1}`, displayPool(leg.pool), `${leg.quote.amountInUi} ${displaySymbol(leg.inputSymbol)}`, `${leg.quote.expectedOutUi} ${displaySymbol(leg.outputSymbol)}`, `${leg.quote.minOutUi} ${displaySymbol(leg.outputSymbol)}`, bps(leg.quote.priceImpactBps)])} /></>}
   </section>;
 }
 
@@ -294,7 +294,7 @@ function BatchConsole({ maker }) {
   const infrastructure = maker.executionInfrastructure;
   const [rows, setRows] = useState([
     { id: "route-1", inputSymbol: "USDT", amountUi: "1" },
-    { id: "route-2", inputSymbol: "BG", amountUi: "100" },
+    { id: "route-2", inputSymbol: "SIAM", amountUi: "100" },
   ]);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -336,9 +336,9 @@ function BatchConsole({ maker }) {
     const inputSymbol = quote?.action?.inputSymbol;
     return [
       `${index + 1}`,
-      item.ok ? `${inputSymbol} → ANTFUN → ${quote.outputSymbol}` : "—",
-      item.ok ? `${rawToDecimal(quote.action.amountInRaw, 6)} ${inputSymbol}` : "—",
-      item.ok ? `${rawToDecimal(quote.minOutRaw, 6)} ${quote.outputSymbol}` : "—",
+      item.ok ? `${displaySymbol(inputSymbol)} → ANTFUN → ${displaySymbol(quote.outputSymbol)}` : "—",
+      item.ok ? `${rawToDecimal(quote.action.amountInRaw, 6)} ${displaySymbol(inputSymbol)}` : "—",
+      item.ok ? `${rawToDecimal(quote.minOutRaw, 6)} ${displaySymbol(quote.outputSymbol)}` : "—",
       item.ok ? bps(quote.compoundedSlippageBps) : "—",
       item.ok ? (quote.risk?.passed ? "通过" : quote.risk?.reasons?.map(riskReasonZh).join("；") || "阻断") : item.error,
     ];
@@ -355,15 +355,15 @@ function BatchConsole({ maker }) {
     <section className="ops-card batch-planner">
       <CardTitle icon={Stack} title="批量路径报价" note={`最多 12 个动作 · 每腿 ${bps(maker.config?.risk?.maxSlippageBps)} · 不广播`} />
       <div className="batch-toolbar">
-        <div><strong>任务编排</strong><span>只允许 BG↔ANTFUN↔USDT 固定双池路径；逐项返回风控结果。</span></div>
+        <div><strong>任务编排</strong><span>只允许暹罗币↔ANTFUN↔USDT 固定双池路径；逐项返回风控结果。</span></div>
         <button className="button button--ghost" type="button" onClick={addRow} disabled={rows.length >= 12}><Plus size={15} />添加任务</button>
       </div>
       <div className="batch-rows">
         {rows.map((row, index) => <div className="batch-row" key={row.id}>
           <span className="batch-index">{String(index + 1).padStart(2, "0")}</span>
-          <label><span>方向</span><select value={row.inputSymbol} onChange={(event) => updateRow(row.id, { inputSymbol: event.target.value, amountUi: event.target.value === "USDT" ? "1" : "100" })}><option value="USDT">USDT → BG</option><option value="BG">BG → USDT</option></select></label>
-          <label><span>输入数量</span><div className="batch-amount"><input value={row.amountUi} inputMode="decimal" onChange={(event) => updateRow(row.id, { amountUi: event.target.value.replace(/[^0-9.]/g, "") })} /><b>{row.inputSymbol}</b></div></label>
-          <div className="batch-route"><span>固定路径</span><strong>{row.inputSymbol === "USDT" ? "USDT → ANTFUN → BG" : "BG → ANTFUN → USDT"}</strong></div>
+          <label><span>方向</span><select value={row.inputSymbol} onChange={(event) => updateRow(row.id, { inputSymbol: event.target.value, amountUi: event.target.value === "USDT" ? "1" : "100" })}><option value="USDT">USDT → 暹罗币</option><option value="SIAM">暹罗币 → USDT</option></select></label>
+          <label><span>输入数量</span><div className="batch-amount"><input value={row.amountUi} inputMode="decimal" onChange={(event) => updateRow(row.id, { amountUi: event.target.value.replace(/[^0-9.]/g, "") })} /><b>{displaySymbol(row.inputSymbol)}</b></div></label>
+          <div className="batch-route"><span>固定路径</span><strong>{row.inputSymbol === "USDT" ? "USDT → ANTFUN → 暹罗币" : "暹罗币 → ANTFUN → USDT"}</strong></div>
           <button className="batch-remove" type="button" aria-label={`删除任务 ${index + 1}`} onClick={() => removeRow(row.id)} disabled={rows.length === 1}><Trash size={16} /></button>
         </div>)}
       </div>
@@ -382,22 +382,22 @@ function BatchConsole({ maker }) {
 function TokenRadar({ maker }) {
   const intelligence = maker.tokenIntelligence;
   const concentration = intelligence?.concentration ?? {};
-  const poolVerified = Boolean(maker.snapshot?.pools?.bgAntfun?.identity?.verified);
+  const poolVerified = Boolean(maker.snapshot?.pools?.siamAntfun?.identity?.verified);
   return <>
     <div className="ops-metrics">
-      <Metric label="BG 总供应量" value={intelligence?.supplyUi ? amount(intelligence.supplyUi) : "—"} note={`Decimals ${intelligence?.decimals ?? "—"}`} />
+      <Metric label="暹罗币总供应量" value={intelligence?.supplyUi ? amount(intelligence.supplyUi) : "—"} note={`Decimals ${intelligence?.decimals ?? "—"}`} />
       <Metric label="Mint 权限" value={intelligence ? (intelligence.mintAuthority ? "未撤销" : "已撤销") : "—"} note={intelligence?.mintAuthority ? "仍可增发" : "主网 Mint 账户校验"} tone={intelligence && !intelligence.mintAuthority ? "ok" : "warn"} />
       <Metric label="冻结权限" value={intelligence ? (intelligence.freezeAuthority ? "未撤销" : "已撤销") : "—"} note={intelligence?.freezeAuthority ? "可冻结 Token Account" : "主网 Mint 账户校验"} tone={intelligence && !intelligence.freezeAuthority ? "ok" : "warn"} />
       <Metric label="Top 10 集中度" value={bps(concentration.top10Bps)} note={concentration.accountsSampled ? `${concentration.accountsSampled} 个最大账户样本` : "公共 RPC 未提供索引"} tone={concentration.top10Bps == null ? undefined : Number(concentration.top10Bps) <= 8000 ? "ok" : "warn"} />
     </div>
 
     <div className="ops-grid token-grid">
-      <section className="ops-card"><CardTitle icon={Scan} title="BG Mint 主网画像" note={intelligence?.capturedAt ? time(intelligence.capturedAt) : "等待 RPC"} /><dl className="ops-kv"><Row label="Mint" value={intelligence?.mint ?? "—"} mono /><Row label="Token Program" value={intelligence?.tokenProgram ?? "—"} /><Row label="Program ID" value={intelligence?.programId ?? "—"} mono /><Row label="初始化状态" value={intelligence?.initialized == null ? "—" : intelligence.initialized ? "已初始化" : "异常"} /><Row label="供应量 (raw)" value={intelligence?.supplyRaw ?? "—"} mono /></dl></section>
-      <section className="ops-card"><CardTitle icon={ShieldCheck} title="发行与池身份检查" note="实时结论" /><ul className="ops-checklist"><Check ok={Boolean(intelligence?.initialized)}>Mint 账户已初始化</Check><Check ok={intelligence?.mintAuthority === null}>Mint 增发权限已撤销</Check><Check ok={intelligence?.freezeAuthority === null}>Token Account 冻结权限已撤销</Check><Check ok={poolVerified}>BG/ANTFUN 官方 DAMM v2 主池身份已验证</Check><Check ok={Boolean(maker.snapshot?.pools?.antfunUsdt?.identity?.verified)}>ANTFUN/USDT 桥接主池身份已验证</Check></ul></section>
+      <section className="ops-card"><CardTitle icon={Scan} title="暹罗币 Mint 主网画像" note={intelligence?.capturedAt ? time(intelligence.capturedAt) : "等待 RPC"} /><dl className="ops-kv"><Row label="Mint" value={intelligence?.mint ?? "—"} mono /><Row label="Token Program" value={intelligence?.tokenProgram ?? "—"} /><Row label="Program ID" value={intelligence?.programId ?? "—"} mono /><Row label="初始化状态" value={intelligence?.initialized == null ? "—" : intelligence.initialized ? "已初始化" : "异常"} /><Row label="供应量 (raw)" value={intelligence?.supplyRaw ?? "—"} mono /></dl></section>
+      <section className="ops-card"><CardTitle icon={ShieldCheck} title="发行与池身份检查" note="实时结论" /><ul className="ops-checklist"><Check ok={Boolean(intelligence?.initialized)}>Mint 账户已初始化</Check><Check ok={intelligence?.mintAuthority === null}>Mint 增发权限已撤销</Check><Check ok={intelligence?.freezeAuthority === null}>Token Account 冻结权限已撤销</Check><Check ok={poolVerified}>暹罗币/ANTFUN DAMM v2 主池身份已验证</Check><Check ok={Boolean(maker.snapshot?.pools?.antfunUsdt?.identity?.verified)}>ANTFUN/USDT 桥接主池身份已验证</Check></ul></section>
     </div>
 
     <div className="ops-policy-callout"><ShieldCheck size={17} weight="fill" /><div><strong>只做真实持有人洞察</strong><span>不会批量创建空钱包、拆分代币余额或把 Token Account 数量包装成独立持有人增长。</span></div></div>
-    <section className="ops-card holder-card"><CardTitle icon={ChartLineUp} title="最大 Token Account 分布" note="RPC 返回最大账户样本；不等同于独立持有人数量" />{intelligence?.largestAccounts?.length ? <div className="holder-list">{intelligence.largestAccounts.slice(0, 10).map((account) => <div className="holder-row" key={account.address}><span>#{account.rank}</span><div><strong className="ops-mono" title={account.address}>{short(account.address)}</strong><i><b style={{ width: `${Math.max(1, Math.min(100, Number(account.shareBps ?? 0) / 100))}%` }} /></i></div><em>{amount(account.amountUi)} BG</em><b>{bps(account.shareBps)}</b></div>)}</div> : <Empty compact>公共 RPC 暂未返回最大账户列表；系统不会用模拟数据填充。</Empty>}{intelligence?.warnings?.length ? <div className="ops-quote-error"><Warning size={16} weight="fill" />{intelligence.warnings.join("；")}</div> : null}</section>
+    <section className="ops-card holder-card"><CardTitle icon={ChartLineUp} title="最大 Token Account 分布" note="RPC 返回最大账户样本；不等同于独立持有人数量" />{intelligence?.largestAccounts?.length ? <div className="holder-list">{intelligence.largestAccounts.slice(0, 10).map((account) => <div className="holder-row" key={account.address}><span>#{account.rank}</span><div><strong className="ops-mono" title={account.address}>{short(account.address)}</strong><i><b style={{ width: `${Math.max(1, Math.min(100, Number(account.shareBps ?? 0) / 100))}%` }} /></i></div><em>{amount(account.amountUi)} 暹罗币</em><b>{bps(account.shareBps)}</b></div>)}</div> : <Empty compact>公共 RPC 暂未返回最大账户列表；系统不会用模拟数据填充。</Empty>}{intelligence?.warnings?.length ? <div className="ops-quote-error"><Warning size={16} weight="fill" />{intelligence.warnings.join("；")}</div> : null}</section>
   </>;
 }
 
@@ -410,7 +410,7 @@ function Accounting({ maker }) {
       <Metric label="未实现损益" value={usdtRaw(accounting?.unrealizedPnlUsdtRaw)} note="链上公开余额按当前两池隐含价估值" />
       <Metric label="今日风控名义金额" value={usdtRaw(accounting?.dailyNotionalUsdtRaw)} note="与池全量成交额分开" />
     </div>
-    <section className="ops-card"><CardTitle icon={LockKey} title="USDT 成本基准" note={accounting?.status === "ready" ? "可复算" : "等待链上估值"} />{accounting?.costBasis?.length ? <DataTable headers={["资产", "账本数量 (raw)", "成本 (USDT)", "最后对账"]} rows={accounting.costBasis.map((item) => [item.symbol, item.quantityRaw, usdtRaw(item.costUsdtRaw), time(item.updatedAt)])} /> : <Empty compact>首次取得有效钱包快照和两池隐含价格后建立链上期初基准。</Empty>}<div className="ops-volume-footnote"><b>口径：{accounting?.inventoryScope ?? "配置钱包已知 Token Account"}；外部转入按当时市场价增加成本，外部转出按比例移除成本。</b></div></section>
+    <section className="ops-card"><CardTitle icon={LockKey} title="USDT 成本基准" note={accounting?.status === "ready" ? "可复算" : "等待链上估值"} />{accounting?.costBasis?.length ? <DataTable headers={["资产", "账本数量 (raw)", "成本 (USDT)", "最后对账"]} rows={accounting.costBasis.map((item) => [displaySymbol(item.symbol), item.quantityRaw, usdtRaw(item.costUsdtRaw), time(item.updatedAt)])} /> : <Empty compact>首次取得有效钱包快照和两池隐含价格后建立链上期初基准。</Empty>}<div className="ops-volume-footnote"><b>口径：{accounting?.inventoryScope ?? "配置钱包已知 Token Account"}；外部转入按当时市场价增加成本，外部转出按比例移除成本。</b></div></section>
   </>;
 }
 
@@ -424,15 +424,15 @@ function Automation({ maker }) {
 function WalletView({ maker }) {
   const wallet = maker.health?.snapshotFresh ? maker.snapshot?.wallet : null;
   return <>
-    <div className="ops-metrics"><Metric label="公开地址" value={maker.config?.walletAddress ? "已配置" : "未配置"} note="不会加载签名材料" /><Metric label="原生 SOL" value={wallet ? `${amount(wallet.solUi)} SOL` : "—"} note="仅作链上手续费储备" /><Metric label="交易 Token Account" value={wallet ? String(wallet.tokenAccounts?.filter((item) => item.symbol !== "SOL").length ?? 0) : "—"} note="BG / ANTFUN / USDT" /><Metric label="签名模式" value="外部人工签名" note="二阶段确认" tone="ok" /></div>
-    <section className="ops-card"><CardTitle icon={Wallet} title="公开运营地址" note="只读" /><dl className="ops-kv ops-kv--wide"><Row label="地址" value={maker.config?.walletAddress ?? "未配置"} mono /><Row label="签名位置" value="外部钱包 / 硬件钱包" /><Row label="助记词" value="禁止进入服务或浏览器" /><Row label="私钥" value="禁止进入服务或浏览器" /></dl>{wallet?.tokenAccounts?.length ? <DataTable headers={["资产", "余额", "Token Account 数", "Mint"]} rows={wallet.tokenAccounts.map((item) => [item.symbol, amount(item.amountUi), item.accounts, item.mint])} /> : <Empty compact>配置公开地址并取得有效 RPC 快照后，才会显示 SOL 余额与 Token Account。</Empty>}</section>
+    <div className="ops-metrics"><Metric label="公开地址" value={maker.config?.walletAddress ? "已配置" : "未配置"} note="不会加载签名材料" /><Metric label="原生 SOL" value={wallet ? `${amount(wallet.solUi)} SOL` : "—"} note="仅作链上手续费储备" /><Metric label="交易 Token Account" value={wallet ? String(wallet.tokenAccounts?.filter((item) => item.symbol !== "SOL").length ?? 0) : "—"} note="暹罗币 / ANTFUN / USDT" /><Metric label="签名模式" value="外部人工签名" note="二阶段确认" tone="ok" /></div>
+    <section className="ops-card"><CardTitle icon={Wallet} title="公开运营地址" note="只读" /><dl className="ops-kv ops-kv--wide"><Row label="地址" value={maker.config?.walletAddress ?? "未配置"} mono /><Row label="签名位置" value="外部钱包 / 硬件钱包" /><Row label="助记词" value="禁止进入服务或浏览器" /><Row label="私钥" value="禁止进入服务或浏览器" /></dl>{wallet?.tokenAccounts?.length ? <DataTable headers={["资产", "余额", "Token Account 数", "Mint"]} rows={wallet.tokenAccounts.map((item) => [displaySymbol(item.symbol), amount(item.amountUi), item.accounts, item.mint])} /> : <Empty compact>配置公开地址并取得有效 RPC 快照后，才会显示 SOL 余额与 Token Account。</Empty>}</section>
   </>;
 }
 
 function Risk({ maker }) {
   const risk = maker.config?.risk ?? {};
   return <>
-    <div className="ops-metrics"><Metric label="最大滑点" value={bps(risk.maxSlippageBps)} note="服务端上限" /><Metric label="最大价格影响" value={bps(risk.maxPriceImpactBps)} note="超过即拒绝" /><Metric label="库存目标 BG / ANTFUN / USDT" value={risk.inventoryTargetsBps ? `${bps(risk.inventoryTargetsBps.BG)} / ${bps(risk.inventoryTargetsBps.ANTFUN)} / ${bps(risk.inventoryTargetsBps.USDT)}` : "—"} note={`容忍带 ${bps(risk.inventoryToleranceBps)}`} /><Metric label="每日损失上限" value={bps(risk.dailyLossLimitBps)} note="基于已实现损益账本" /></div>
+    <div className="ops-metrics"><Metric label="最大滑点" value={bps(risk.maxSlippageBps)} note="服务端上限" /><Metric label="最大价格影响" value={bps(risk.maxPriceImpactBps)} note="超过即拒绝" /><Metric label="库存目标 暹罗币 / ANTFUN / USDT" value={risk.inventoryTargetsBps ? `${bps(risk.inventoryTargetsBps.SIAM)} / ${bps(risk.inventoryTargetsBps.ANTFUN)} / ${bps(risk.inventoryTargetsBps.USDT)}` : "—"} note={`容忍带 ${bps(risk.inventoryToleranceBps)}`} /><Metric label="每日损失上限" value={bps(risk.dailyLossLimitBps)} note="基于已实现损益账本" /></div>
     <Blockers maker={maker} />
   </>;
 }
@@ -445,7 +445,7 @@ function Settings({ maker }) {
   const config = maker.config;
   return <div className="ops-grid">
     <section className="ops-card"><CardTitle icon={GearSix} title="进程配置" note="公开字段" /><dl className="ops-kv"><Row label="API" value={maker.apiBase} mono /><Row label="网络" value={config?.network ?? "—"} /><Row label="模式" value={config?.mode ?? "—"} /><Row label="RPC 策略" value={config?.rpcPolicy?.mode === "public-risk-accepted" ? "公共 RPC · 风险已接受" : config?.rpcPolicy?.mode ?? "—"} /><Row label="钱包" value={config?.walletAddress ?? "未配置"} mono /><Row label="允许来源" value={config?.allowedOrigins?.join(", ") ?? "—"} /><Row label="实时事件流" value={maker.stream === "connected" ? "已连接" : maker.stream === "degraded" ? "连续失败 · 轮询接管" : "重连中"} /></dl></section>
-    <section className="ops-card"><CardTitle icon={LockKey} title="生产启用条件" note="缺一不可" /><ul className="ops-checklist"><Check ok={Boolean(config?.walletAddress && maker.health?.walletIdentityVerified)}>运营地址已通过 Solana 主网账户校验</Check><Check ok={Boolean(config?.pools?.bgAntfun && config?.pools?.antfunUsdt)}>固定两池已配置</Check><Check ok={Boolean(maker.health?.topologyReady)}>新鲜快照的两池程序、Mint 与流动性校验通过</Check><Check ok={config?.mode === "live"}>显式 live 模式确认</Check><Check ok={Boolean(maker.health?.accountingReady)}>每日 USDT 名义金额、库存方向与损益账本</Check><Check ok={Boolean(maker.health?.rpcPolicyReady)}>{maker.health?.rpcPolicyMode === "public-risk-accepted" ? "公共 RPC live 风险已由运营方明确接受" : "认证私有 RPC 与提交 SLA 验收"}</Check><Check ok={Boolean(maker.health?.solReserveReady)}>运营钱包 SOL 手续费储备达到服务端下限</Check></ul></section>
+    <section className="ops-card"><CardTitle icon={LockKey} title="生产启用条件" note="缺一不可" /><ul className="ops-checklist"><Check ok={Boolean(config?.walletAddress && maker.health?.walletIdentityVerified)}>运营地址已通过 Solana 主网账户校验</Check><Check ok={Boolean(config?.pools?.siamAntfun && config?.pools?.antfunUsdt)}>固定两池已配置</Check><Check ok={Boolean(maker.health?.topologyReady)}>新鲜快照的两池程序、Mint 与流动性校验通过</Check><Check ok={config?.mode === "live"}>显式 live 模式确认</Check><Check ok={Boolean(maker.health?.accountingReady)}>每日 USDT 名义金额、库存方向与损益账本</Check><Check ok={Boolean(maker.health?.rpcPolicyReady)}>{maker.health?.rpcPolicyMode === "public-risk-accepted" ? "公共 RPC live 风险已由运营方明确接受" : "认证私有 RPC 与提交 SLA 验收"}</Check><Check ok={Boolean(maker.health?.solReserveReady)}>运营钱包 SOL 手续费储备达到服务端安全下限</Check></ul></section>
   </div>;
 }
 
@@ -474,6 +474,8 @@ function bps(value) { return value == null ? "—" : `${(Number(value) / 100).to
 function time(value) { return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "—"; }
 function hour(value) { return value ? new Date(value).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Shanghai" }) : "—"; }
 function compactJson(value) { const text = JSON.stringify(value ?? {}); return text.length > 110 ? `${text.slice(0, 107)}…` : text; }
+function displaySymbol(value) { return value === "SIAM" ? "暹罗币" : value; }
+function displayPool(value) { return value === "siamAntfun" ? "暹罗币 / ANTFUN" : value === "antfunUsdt" ? "ANTFUN / USDT" : value; }
 function microLamports(value) { return value == null ? "—" : `${Number(value).toLocaleString()} μ-lamports/CU`; }
 function short(value) { const text = String(value ?? ""); return text.length > 20 ? `${text.slice(0, 9)}…${text.slice(-8)}` : text || "—"; }
 function riskReasonZh(value) { const translations = { "Configured wallet balance is below the approved input amount.": "运营钱包输入资产余额不足", "Action would increase an already out-of-band inventory exposure.": "该方向会扩大已超出容忍带的库存敞口", "System is in observe mode.": "系统处于观察模式", "Automation is paused.": "自动化已暂停" }; return translations[value] ?? value; }

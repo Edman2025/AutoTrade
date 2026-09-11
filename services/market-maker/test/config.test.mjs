@@ -6,9 +6,9 @@ test("observe mode is the fail-safe default", () => {
   const config = loadConfig({});
   assert.equal(config.network, "mainnet-beta");
   assert.equal(config.mode, "observe");
-  assert.equal(config.pools.bgAntfun.address, "AJJxmAV2C2WTHVHD4FEP71Vt8Rdu5day1v4Pr1FJPXEy");
+  assert.equal(config.pools.siamAntfun.address, "EJhr4va8YcksrUhDAMrTH6yeZUBZKzen2KYEaiLJNFPe");
   assert.equal(config.pools.antfunUsdt.address, "54Vp27uLaw4wNLo5n7r4fcC6zLamoQc28xBARjss4EUJ");
-  assert.deepEqual(Object.keys(config.pools), ["bgAntfun", "antfunUsdt"]);
+  assert.deepEqual(Object.keys(config.pools), ["siamAntfun", "antfunUsdt"]);
   assert.equal(publicConfig(config).mutationsEnabled, false);
 });
 

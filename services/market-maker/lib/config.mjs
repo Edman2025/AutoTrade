@@ -7,16 +7,16 @@ export const PROGRAMS = Object.freeze({
 });
 
 export const TOKENS = Object.freeze({
-  BG: Object.freeze({ mint: "HSkHx26EFANEcBjrmN4H8uAmRFCFGUn5uoRMh9bgxgan", decimals: 6 }),
+  SIAM: Object.freeze({ mint: "EFQcTNWXTtjMBQfHt7R5EQFpq8X2agwKeA43DfVrkgan", decimals: 6, name: "暹罗币" }),
   ANTFUN: Object.freeze({ mint: "CWZ6BsdnjkDVTGkmL6bGbJXXig6ceef12KvyGQW14cMt", decimals: 6 }),
   USDT: Object.freeze({ mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 }),
 });
 
 export const POOLS = Object.freeze({
-  bgAntfun: Object.freeze({
-    address: "AJJxmAV2C2WTHVHD4FEP71Vt8Rdu5day1v4Pr1FJPXEy",
+  siamAntfun: Object.freeze({
+    address: "EJhr4va8YcksrUhDAMrTH6yeZUBZKzen2KYEaiLJNFPe",
     kind: "damm-v2",
-    tokenX: "BG",
+    tokenX: "SIAM",
     tokenY: "ANTFUN",
     programId: PROGRAMS.dammV2,
   }),
@@ -39,7 +39,7 @@ const DEFAULTS = Object.freeze({
   quoteStaleMs: 3_000,
   maxSlippageBps: 100,
   maxPriceImpactBps: 100,
-  maxTradeBgRaw: 1_000_000_000_000n,
+  maxTradeSiamRaw: 1_000_000_000_000n,
   maxTradeAntfunRaw: 4_000_000_000n,
   maxTradeUsdtRaw: 2_000_000_000n,
   maxDailyNotionalUsdtRaw: 10_000_000_000n,
@@ -48,7 +48,7 @@ const DEFAULTS = Object.freeze({
   cooldownMs: 30_000,
   dailyLossLimitBps: 300,
   inventoryToleranceBps: 500,
-  inventoryTargetBgBps: 4_500,
+  inventoryTargetSiamBps: 4_500,
   inventoryTargetAntfunBps: 1_000,
   inventoryTargetUsdtBps: 4_500,
   sseHeartbeatMs: 20_000,
@@ -85,7 +85,7 @@ export function loadConfig(env = process.env) {
   const accountingTimeZone = env.MAKER_ACCOUNTING_TIME_ZONE?.trim() || "Asia/Shanghai";
   validateTimeZone(accountingTimeZone);
   const inventoryTargetsBps = {
-    BG: integer(env.MAKER_INVENTORY_TARGET_BG_BPS, DEFAULTS.inventoryTargetBgBps, 0, 10_000, "MAKER_INVENTORY_TARGET_BG_BPS"),
+    SIAM: integer(env.MAKER_INVENTORY_TARGET_SIAM_BPS ?? env.MAKER_INVENTORY_TARGET_BG_BPS, DEFAULTS.inventoryTargetSiamBps, 0, 10_000, "MAKER_INVENTORY_TARGET_SIAM_BPS"),
     ANTFUN: integer(env.MAKER_INVENTORY_TARGET_ANTFUN_BPS, DEFAULTS.inventoryTargetAntfunBps, 0, 10_000, "MAKER_INVENTORY_TARGET_ANTFUN_BPS"),
     USDT: integer(env.MAKER_INVENTORY_TARGET_USDT_BPS, DEFAULTS.inventoryTargetUsdtBps, 0, 10_000, "MAKER_INVENTORY_TARGET_USDT_BPS"),
   };
@@ -114,14 +114,14 @@ export function loadConfig(env = process.env) {
     snapshotIntervalMs: integer(env.MAKER_SNAPSHOT_INTERVAL_MS, DEFAULTS.snapshotIntervalMs, 2_000, 300_000, "MAKER_SNAPSHOT_INTERVAL_MS"),
     sseHeartbeatMs: integer(env.MAKER_SSE_HEARTBEAT_MS, DEFAULTS.sseHeartbeatMs, 1_000, 60_000, "MAKER_SSE_HEARTBEAT_MS"),
     pools: {
-      bgAntfun: POOLS.bgAntfun,
+      siamAntfun: POOLS.siamAntfun,
       antfunUsdt: POOLS.antfunUsdt,
     },
     risk: {
       quoteStaleMs: integer(env.MAKER_QUOTE_STALE_MS, DEFAULTS.quoteStaleMs, 500, 30_000, "MAKER_QUOTE_STALE_MS"),
       maxSlippageBps: integer(env.MAKER_MAX_SLIPPAGE_BPS, DEFAULTS.maxSlippageBps, 1, 300, "MAKER_MAX_SLIPPAGE_BPS"),
       maxPriceImpactBps: integer(env.MAKER_MAX_PRICE_IMPACT_BPS, DEFAULTS.maxPriceImpactBps, 1, 500, "MAKER_MAX_PRICE_IMPACT_BPS"),
-      maxTradeBgRaw: bigint(env.MAKER_MAX_TRADE_BG_RAW, DEFAULTS.maxTradeBgRaw, "MAKER_MAX_TRADE_BG_RAW"),
+      maxTradeSiamRaw: bigint(env.MAKER_MAX_TRADE_SIAM_RAW ?? env.MAKER_MAX_TRADE_BG_RAW, DEFAULTS.maxTradeSiamRaw, "MAKER_MAX_TRADE_SIAM_RAW"),
       maxTradeAntfunRaw: bigint(env.MAKER_MAX_TRADE_ANTFUN_RAW, DEFAULTS.maxTradeAntfunRaw, "MAKER_MAX_TRADE_ANTFUN_RAW"),
       maxTradeUsdtRaw: bigint(env.MAKER_MAX_TRADE_USDT_RAW, DEFAULTS.maxTradeUsdtRaw, "MAKER_MAX_TRADE_USDT_RAW"),
       maxDailyNotionalUsdtRaw: bigint(env.MAKER_MAX_DAILY_NOTIONAL_USDT_RAW, DEFAULTS.maxDailyNotionalUsdtRaw, "MAKER_MAX_DAILY_NOTIONAL_USDT_RAW"),

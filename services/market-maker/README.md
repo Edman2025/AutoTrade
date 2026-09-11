@@ -6,11 +6,11 @@ before graduation and Meteora DAMM v2 after graduation.
 
 ## Enforced topology
 
-- BG/ANTFUN DAMM v2 pool:
-  `AJJxmAV2C2WTHVHD4FEP71Vt8Rdu5day1v4Pr1FJPXEy`
+- 暹罗币/ANTFUN DAMM v2 pool:
+  `EJhr4va8YcksrUhDAMrTH6yeZUBZKzen2KYEaiLJNFPe`
 - ANTFUN/USDT DLMM pool:
   `54Vp27uLaw4wNLo5n7r4fcC6zLamoQc28xBARjss4EUJ`
-- Direct BG/SOL and the empty/dust ANTFUN/SOL pools are rejected.
+- Direct 暹罗币/SOL and the empty/dust ANTFUN/SOL pools are rejected.
 - SOL is retained only as the wallet's native transaction-fee reserve. It is
   not a quote, route, valuation, or market-making asset.
 
@@ -26,7 +26,7 @@ Operational startup and approval steps are recorded in `RUNBOOK.md`.
 
 - `observe`: reads public pool/RPC state, saves snapshots, provides quotes, and
   disables all mutation endpoints. When a public wallet address is configured,
-  its native SOL, supported token accounts, and pool positions are also read.
+its native SOL, supported token accounts, and pool positions are also read.
 - `prepare`: enables transaction construction, simulation, and an auditable
   prepare/approve workflow. It cannot broadcast.
 - `live`: additionally permits submission of a separately signed transaction,
@@ -50,7 +50,7 @@ read-only fallback and is not reliable enough for production.
 The current local observe-mode fallback is PublicNode
 (`https://solana-rpc.publicnode.com`). Because anonymous shared RPCs restrict
 expensive indexed methods, `MAKER_ENABLE_POSITION_INDEX=false` reads only the
-fixed pool accounts and the configured wallet's known BG, ANTFUN, and USDT
+fixed pool accounts and the configured wallet's known 暹罗币, ANTFUN, and USDT
 associated token accounts. Enable LP position discovery only with an
 authenticated RPC that supports `getProgramAccounts`. Live mode still requires
 an authenticated endpoint with a reviewed rate limit and transaction-submission
@@ -76,7 +76,8 @@ API endpoints:
   always redact it
 
 `POST /api/v1/quotes` accepts either a one-pool `swap` or a quote-only
-`route-swap` with `inputSymbol` equal to `BG` or `USDT`. Route quotes chain each
+`route-swap` with `inputSymbol` equal to `SIAM` or `USDT`. `SIAM` is the
+service symbol for 暹罗币. Route quotes chain each
 leg's protected minimum output into the next leg and report compounded
 slippage. Multi-leg broadcasting remains disabled until resumable execution
 state is implemented and tested.

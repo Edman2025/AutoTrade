@@ -1,7 +1,7 @@
 import { TOKENS } from "./config.mjs";
 
 const SCALE = 1_000_000n;
-const SYMBOLS = Object.freeze(["BG", "ANTFUN", "USDT"]);
+const SYMBOLS = Object.freeze(["SIAM", "ANTFUN", "USDT"]);
 
 export class RiskAccountingService {
   constructor(config, store) {
@@ -57,14 +57,14 @@ export class RiskAccountingService {
   buildExecution({ intent, signature, balanceBefore, balanceAfter }) {
     const action = intent.summary.action;
     const savedPrices = intent.summary.accounting?.prices;
-    const prices = savedPrices?.BG
+    const prices = savedPrices?.SIAM
       ? Object.fromEntries(SYMBOLS.map((symbol) => [symbol, BigInt(savedPrices[symbol])]))
       : priceTable(intent.summary.impliedPrices);
     if (!prices) throw new Error("The approved intent has no immutable USDT valuation table.");
     const before = walletBalances(balanceBefore);
     const after = walletBalances(balanceAfter);
     const inputSymbol = action.inputSymbol;
-    const outputSymbol = action.kind === "route-swap" ? (inputSymbol === "BG" ? "USDT" : "BG") : action.outputSymbol;
+    const outputSymbol = action.kind === "route-swap" ? (inputSymbol === "SIAM" ? "USDT" : "SIAM") : action.outputSymbol;
     const amountInRaw = positive(before[inputSymbol] - after[inputSymbol]);
     const amountOutRaw = positive(after[outputSymbol] - before[outputSymbol]);
     if (amountInRaw <= 0n || amountOutRaw <= 0n) throw new Error("Confirmed transaction balance deltas do not match the approved swap direction.");
@@ -119,7 +119,9 @@ export class RiskAccountingService {
     if (prices && balances) this.reconcileChainBalances(balances, prices);
     const day = accountingDay(new Date(), this.config.accountingTimeZone);
     const daily = this.store.dailyAccountingBetween(day.start, day.end);
-    const basis = this.store.listCostBasis();
+    // Preserve legacy rows in SQLite for auditability, but do not let a retired
+    // asset symbol break valuation after the monitored token changes.
+    const basis = this.store.listCostBasis().filter((row) => SYMBOLS.includes(row.symbol));
     const unrealizedPnlUsdtRaw = prices && balances
       ? basis.reduce((total, row) => total + valueOf(balances[row.symbol] ?? 0n, row.symbol, prices) - BigInt(row.costUsdtRaw), 0n)
       : null;
@@ -158,13 +160,13 @@ export class RiskAccountingService {
 }
 
 export function priceTable(implied) {
-  if (!implied || !Number.isFinite(Number(implied.bgInUsdt)) || !Number.isFinite(Number(implied.antfunInUsdt))) return null;
+  if (!implied || !Number.isFinite(Number(implied.siamInUsdt)) || !Number.isFinite(Number(implied.antfunInUsdt))) return null;
   const scaled = (value) => BigInt(Math.max(1, Math.ceil(Number(value) * Number(SCALE))));
-  return { BG: scaled(implied.bgInUsdt), ANTFUN: scaled(implied.antfunInUsdt), USDT: SCALE };
+  return { SIAM: scaled(implied.siamInUsdt), ANTFUN: scaled(implied.antfunInUsdt), USDT: SCALE };
 }
 
 export function walletBalances(wallet) {
-  const balances = { BG: 0n, ANTFUN: 0n, USDT: 0n };
+  const balances = { SIAM: 0n, ANTFUN: 0n, USDT: 0n };
   for (const account of wallet?.tokenAccounts ?? []) {
     if (account.symbol in balances) balances[account.symbol] += BigInt(account.amountRaw ?? "0");
   }
@@ -173,7 +175,7 @@ export function walletBalances(wallet) {
 
 function projectBalances(before, action, quote) {
   const after = { ...before };
-  const outputSymbol = action.kind === "route-swap" ? (action.inputSymbol === "BG" ? "USDT" : "BG") : action.outputSymbol;
+  const outputSymbol = action.kind === "route-swap" ? (action.inputSymbol === "SIAM" ? "USDT" : "SIAM") : action.outputSymbol;
   const outputRaw = BigInt(quote.minOutRaw);
   const inputRaw = BigInt(action.amountInRaw);
   const sufficientInput = before[action.inputSymbol] >= inputRaw;
@@ -201,7 +203,7 @@ function distanceBps(balances, prices, targets) {
 }
 
 function tradeNotional(action, quote, prices) {
-  const outputSymbol = action.kind === "route-swap" ? (action.inputSymbol === "BG" ? "USDT" : "BG") : action.outputSymbol;
+  const outputSymbol = action.kind === "route-swap" ? (action.inputSymbol === "SIAM" ? "USDT" : "SIAM") : action.outputSymbol;
   return max(valueOf(BigInt(action.amountInRaw), action.inputSymbol, prices), valueOf(BigInt(quote.minOutRaw), outputSymbol, prices));
 }
 

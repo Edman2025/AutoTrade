@@ -423,9 +423,7 @@ export function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   const accountMenuRef = useRef(null);
   const maker = useMakerData();
-  const bgPool = maker.health?.snapshotFresh ? maker.snapshot?.pools?.bgAntfun : null;
-  const bgReserve = findReserve(bgPool, "BG");
-  const antfunReserve = findReserve(bgPool, "ANTFUN");
+  const siamPool = maker.health?.snapshotFresh ? maker.snapshot?.pools?.siamAntfun : null;
   const backendLive = maker.status === "live" || maker.status === "degraded";
   const statusLabel = maker.status === "live" ? "主网拓扑已验证" : maker.status === "degraded" ? "主网风控阻断" : maker.status === "offline" ? "主网服务离线" : "连接主网服务";
   const issueCount = maker.snapshot?.errors?.length ?? 0;
@@ -466,8 +464,8 @@ export function App() {
       <main className="main-content">
         <header className="topbar">
           <div className="asset-identity">
-            <div className="title-row"><h1>BG</h1><span className={`graduated ${bgPool?.identity?.verified ? "" : "is-unverified"}`}>{bgPool?.identity?.verified ? <CheckCircle size={14} weight="fill" /> : <Warning size={14} weight="fill" />}{bgPool?.identity?.verified ? "DAMM 主池已验证" : "主池待验证"}</span><span className="platform-tag">Meteora DAMM v2</span></div>
-            <div className="address-row"><span>官方 BG/ANTFUN 主池</span><ShortAddress>AJJxmAV2…JPXEy</ShortAddress><span className="divider" /> <span>Mint</span><ShortAddress>HSkHx26E…xgan</ShortAddress></div>
+            <div className="title-row"><h1>暹罗币</h1><span className={`graduated ${siamPool?.identity?.verified ? "" : "is-unverified"}`}>{siamPool?.identity?.verified ? <CheckCircle size={14} weight="fill" /> : <Warning size={14} weight="fill" />}{siamPool?.identity?.verified ? "DAMM 主池已验证" : "主池待验证"}</span><span className="platform-tag">Meteora DAMM v2</span></div>
+            <div className="address-row"><span>暹罗币/ANTFUN 主池</span><ShortAddress>EJhr4va8…LJNFPe</ShortAddress><span className="divider" /> <span>Mint</span><ShortAddress>EFQcTNWX…rkgan</ShortAddress></div>
           </div>
           <div className="top-actions">
             <span className="network"><span className="status-pulse" />Solana Mainnet</span>
@@ -515,7 +513,7 @@ export function App() {
             : "主网数据服务未连接。当前仅保留界面结构，不将设计示例金额视为真实数据。"}</span></div>
 
         <OperationalPageRouter page={activeNav} maker={maker} />
-        <footer><span>数据源：Solana RPC · Meteora DAMM v2 / DLMM</span><span><Clock size={13} />最后更新 {maker.snapshot?.capturedAt ? new Date(maker.snapshot.capturedAt).toLocaleString("zh-CN") : "—"}</span><span>主网控制台 v0.5</span></footer>
+        <footer><span>数据源：Solana RPC · Meteora DAMM v2 / DLMM</span><span><Clock size={13} />最后更新 {maker.snapshot?.capturedAt ? new Date(maker.snapshot.capturedAt).toLocaleString("zh-CN") : "—"}</span><span>主网控制台 v0.6</span></footer>
       </main>
       <ActionModal type={modal} onClose={() => setModal(null)} onStop={() => { setAutomation("stopped"); setModal(null); }} />
     </div>
