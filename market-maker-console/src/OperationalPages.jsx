@@ -3,6 +3,7 @@ import {
   Bar,
   CartesianGrid,
   ComposedChart,
+  LabelList,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -526,6 +527,11 @@ function StakingOperations({ maker }) {
     staked: rawNumber(row.stakedRaw),
     reward: rawNumber(row.rewardSettledRaw),
   }));
+  const positiveStakeValues = chartData.map((row) => row.staked).filter((value) => Number.isFinite(value) && value > 0);
+  const smallestPositiveStake = positiveStakeValues.length ? Math.min(...positiveStakeValues) : 0;
+  const largestStake = positiveStakeValues.length ? Math.max(...positiveStakeValues) : 0;
+  const useCompressedStakeScale = smallestPositiveStake > 0 && largestStake / smallestPositiveStake >= 100;
+  const principalTicks = useCompressedStakeScale ? stakingScaleTicks(largestStake) : undefined;
   const records = {
     orders: {
       title: "质押记录",
@@ -592,16 +598,19 @@ function StakingOperations({ maker }) {
     </div>
 
     <section className="ops-card staking-trend-card">
-      <CardTitle icon={ChartLineUp} title="每日质押与奖励日结" note="北京时间 · 暹罗币本金与 ANTFUN 奖励使用独立纵轴" />
+      <CardTitle icon={ChartLineUp} title="每日质押与奖励日结" note={useCompressedStakeScale ? "北京时间 · 新增质押跨度较大，左轴采用对称对数刻度；柱顶与明细显示实际币量" : "北京时间 · 暹罗币本金与 ANTFUN 奖励使用独立纵轴"} />
       {chartData.length ? <div className="staking-trend-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chartData} margin={{ top: 20, right: 28, bottom: 8, left: 10 }}>
         <CartesianGrid stroke="#202a3b" strokeDasharray="3 5" vertical={false} />
         <XAxis dataKey="label" tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#263249" }} />
-        <YAxis yAxisId="principal" tickFormatter={compactTokenAxis} tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={false} width={58} />
+        <YAxis yAxisId="principal" scale={useCompressedStakeScale ? "symlog" : "linear"} domain={[0, "auto"]} ticks={principalTicks} tickFormatter={compactTokenAxis} tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={false} width={58} />
         <YAxis yAxisId="reward" orientation="right" tickFormatter={compactTokenAxis} tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={false} width={58} />
         <Tooltip content={<StakingTooltip />} cursor={{ fill: "#25314955" }} />
-        <Bar yAxisId="principal" dataKey="staked" name="新增质押" fill="#9b6cf5" radius={[4, 4, 0, 0]} maxBarSize={38} />
+        <Bar yAxisId="principal" dataKey="staked" name="新增质押" fill="#9b6cf5" radius={[4, 4, 0, 0]} maxBarSize={38}>
+          <LabelList dataKey="staked" content={<StakeBarLabel />} />
+        </Bar>
         <Line yAxisId="reward" type="monotone" dataKey="reward" name="奖励日结" stroke="#42d7ae" strokeWidth={2.4} dot={{ r: 3 }} activeDot={{ r: 5 }} />
       </ComposedChart></ResponsiveContainer></div> : <Empty compact>{sourceReady ? "生产账本中尚无可绘制的质押或奖励日结日期。" : "等待质押数据源。"}</Empty>}
+      {chartData.length ? <div className="staking-daily-values" aria-label="每日质押与奖励精确值">{chartData.map((row) => <div key={row.date}><strong>{row.label}</strong><span>新增 {formatToken(row.staked)} 暹罗币</span><small>奖励 {formatToken(row.reward)} ANTFUN</small></div>)}</div> : null}
       <div className="ops-volume-footnote"><span><i className="ops-series ops-series--violet" />新增质押（暹罗币）</span><span><i className="ops-series ops-series--green" />奖励日结（ANTFUN）</span><b>奖励按当日真实价格结算，不复利。</b></div>
     </section>
 
@@ -647,6 +656,12 @@ function StakingTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   const values = Object.fromEntries(payload.map((item) => [item.dataKey, item.value]));
   return <div className="ops-volume-tooltip"><strong>{label}</strong><span><i style={{ background: "#9b6cf5" }} />新增质押<b>{formatToken(values.staked)} 暹罗币</b></span><span><i style={{ background: "#42d7ae" }} />奖励日结<b>{formatToken(values.reward)} ANTFUN</b></span></div>;
+}
+
+function StakeBarLabel({ x, y, width, value }) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  return <text x={Number(x) + Number(width) / 2} y={Math.max(Number(y) - 7, 12)} textAnchor="middle" fill="#cdb9ff" fontSize="11" fontWeight="600">{compactTokenAxis(number)}</text>;
 }
 
 function LiquidityTooltip({ active, payload, label, labelName, dataKey }) {
@@ -744,6 +759,7 @@ function rawNumber(value) { if (value == null || !/^-?\d+$/.test(String(value)))
 function formatToken(value) { const number = Number(value); return Number.isFinite(number) ? number.toLocaleString("zh-CN", { maximumFractionDigits: 6 }) : "—"; }
 function tokenRaw(value, symbol) { const number = rawNumber(value); return number == null ? "—" : `${formatToken(number)} ${symbol}`; }
 function compactTokenAxis(value) { const number = Number(value); if (!Number.isFinite(number)) return "—"; if (Math.abs(number) >= 1_000_000) return `${(number / 1_000_000).toFixed(1)}M`; if (Math.abs(number) >= 1_000) return `${(number / 1_000).toFixed(1)}K`; return number.toLocaleString("zh-CN", { maximumFractionDigits: 3 }); }
+function stakingScaleTicks(maximum) { const ticks = [0]; for (let value = 1; value < maximum; value *= 10) { if (value >= 1_000) ticks.push(value); } if (!ticks.includes(maximum)) ticks.push(maximum); return ticks; }
 function usdPrecise(value) { const number = Number(value); return Number.isFinite(number) ? `$${number.toLocaleString("zh-CN", { maximumSignificantDigits: 8 })}` : "—"; }
 function stakingStatus(value) { const labels = { active: "计息中", payout_pending: "到期出款中", redeemed: "已赎回", queued: "待出款", prepared: "已准备", submitted: "已提交", review: "链上确认中", confirmed: "已确认", failed: "失败", cancelled: "已取消", expired: "已过期" }; return labels[value] ?? value ?? "—"; }
 function short(value) { const text = String(value ?? ""); return text.length > 20 ? `${text.slice(0, 9)}…${text.slice(-8)}` : text || "—"; }
