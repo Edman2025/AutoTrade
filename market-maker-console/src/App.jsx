@@ -54,6 +54,7 @@ const navItems = [
   ["盈利地址", TrendUp],
   ["实时交易", Swap],
   ["流动性变化", Database],
+  ["质押运营", Stack],
   ["买方库存执行", TrendUp],
   ["卖方库存执行", TrendDown],
   ["库存与损益", ChartLineUp],

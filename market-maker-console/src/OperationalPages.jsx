@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
+  Bar,
   CartesianGrid,
+  ComposedChart,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -43,6 +45,7 @@ const pageMeta = {
   "盈利地址": [TrendUp, "盈利地址", "基于本服务已索引的主池 Swap 计算分析窗口收益，并明确标注数据覆盖范围。"],
   "实时交易": [Swap, "实时交易", "解析暹罗币/ANTFUN 主池已确认交易，以 vault 余额差识别真实买卖方向。"],
   "流动性变化": [Database, "流动性变化", "使用持续保存的主网池快照观察储备、估算流动性和价格变化。"],
+  "质押运营": [Stack, "质押运营", "汇总暹罗社区真实质押用户、本金、ANTFUN 日结奖励及链上出款记录；体验账户不计入。"],
   "买方库存执行": [TrendUp, "买方库存执行", "将 USDT→ANTFUN→暹罗币拆分为受风控保护的库存补充计划；不设价格拉升目标。"],
   "卖方库存执行": [TrendDown, "卖方库存执行", "将暹罗币→ANTFUN→USDT拆分为受风控保护的库存降低计划；不设价格打压目标。"],
   "库存与损益": [ChartLineUp, "库存与损益", "损益必须由链上仓位和执行账本计算，不使用界面模拟值。"],
@@ -65,6 +68,7 @@ export function OperationalPageRouter({ page, maker }) {
       {page === "盈利地址" && <ProfitableWallets maker={maker} />}
       {page === "实时交易" && <LiveActivity maker={maker} />}
       {page === "流动性变化" && <LiquidityChanges maker={maker} />}
+      {page === "质押运营" && <StakingOperations maker={maker} />}
       {page === "买方库存执行" && <InventoryExecution maker={maker} side="buy" />}
       {page === "卖方库存执行" && <InventoryExecution maker={maker} side="sell" />}
       {page === "库存与损益" && <Accounting maker={maker} />}
@@ -510,6 +514,141 @@ function LiquidityChanges({ maker }) {
   </>;
 }
 
+function StakingOperations({ maker }) {
+  const staking = maker.staking;
+  const [recordTab, setRecordTab] = useState("orders");
+  const summary = staking?.summary;
+  const sourceReady = staking?.status === "ready" || staking?.status === "stale";
+  const coverage = staking?.coverage;
+  const chartData = (staking?.daily ?? []).map((row) => ({
+    ...row,
+    label: row.date?.slice(5),
+    staked: rawNumber(row.stakedRaw),
+    reward: rawNumber(row.rewardSettledRaw),
+  }));
+  const records = {
+    orders: {
+      title: "质押记录",
+      note: coverage ? `最近 ${coverage.orders.returned} / 共 ${coverage.orders.total} 笔` : "等待生产账本",
+      headers: ["创建时间", "用户", "质押本金", "周期 / 日利率", "奖励日结进度", "已结算奖励", "状态", "到期时间", "质押交易"],
+      rows: (staking?.orders ?? []).map((row) => [
+        time(row.createdAt),
+        <Participant key={`${row.id}-participant`} row={row} />,
+        tokenRaw(row.amountRaw, "暹罗币"),
+        `${row.days} 天 / ${bps(row.dailyRateBps)}`,
+        `${row.settledDays} / ${row.days} 天`,
+        tokenRaw(row.settledRewardRaw, "ANTFUN"),
+        <RecordStatus key={`${row.id}-status`} value={row.status} />,
+        time(row.maturesAt),
+        row.stakeSignatureMasked ?? "—",
+      ]),
+    },
+    settlements: {
+      title: "奖励日结记录",
+      note: coverage ? `最近 ${coverage.settlements.returned} / 共 ${coverage.settlements.total} 条` : "等待生产账本",
+      headers: ["结算时间", "用户", "订单", "计息日", "奖励数量", "暹罗币价格", "ANTFUN 价格", "报价时间", "来源"],
+      rows: (staking?.settlements ?? []).map((row) => [
+        time(row.settledAt),
+        <Participant key={`${row.orderId}-${row.day}-participant`} row={row} />,
+        short(row.orderId),
+        `第 ${row.day} 天`,
+        tokenRaw(row.amountRaw, "ANTFUN"),
+        usdPrecise(row.siamPriceUsd),
+        usdPrecise(row.antfunPriceUsd),
+        time(row.quotedAt),
+        row.source,
+      ]),
+    },
+    payouts: {
+      title: "链上出款结算",
+      note: coverage ? `最近 ${coverage.payouts.returned} / 共 ${coverage.payouts.total} 笔` : "等待生产账本",
+      headers: ["创建时间", "用户", "类型", "暹罗币本金", "ANTFUN 奖励", "状态", "更新时间", "交易签名"],
+      rows: (staking?.payouts ?? []).map((row) => [
+        time(row.createdAt),
+        <Participant key={`${row.id}-participant`} row={row} />,
+        row.kind === "maturity" ? "到期本息" : "余额提现",
+        tokenRaw(row.siamAmountRaw, "暹罗币"),
+        tokenRaw(row.antfunAmountRaw, "ANTFUN"),
+        <RecordStatus key={`${row.id}-status`} value={row.status} />,
+        time(row.updatedAt),
+        row.signatureMasked ?? "—",
+      ]),
+    },
+  };
+  const selected = records[recordTab];
+
+  return <>
+    <div className="ops-metrics">
+      <Metric label="真实注册用户" value={summary ? summary.registeredUsers.toLocaleString() : "—"} note={summary ? `${summary.stakingUsers} 位用户已有真实质押` : "排除体验账户"} />
+      <Metric label="实际质押用户" value={summary ? summary.stakingUsers.toLocaleString() : "—"} note={summary ? `${summary.activeStakingUsers} 位仍有未赎回本金` : "按真实订单去重"} tone="ok" />
+      <Metric label="当前质押本金" value={summary ? tokenRaw(summary.activeStakedRaw, "暹罗币") : "—"} note={summary ? `${summary.activeOrders} 笔未赎回 / 累计 ${tokenRaw(summary.cumulativeStakedRaw, "暹罗币")}` : "active + payout_pending"} tone="ok" />
+      <Metric label="累计已结算奖励" value={summary ? tokenRaw(summary.settledRewardRaw, "ANTFUN") : "—"} note={summary ? `${summary.settlementCount} 条实际日结，不含未来预估` : "来源：奖励结算账本"} />
+    </div>
+
+    <div className={`staking-source-callout staking-source-callout--${staking?.status ?? "loading"}`}>
+      <Database size={18} weight="fill" />
+      <div><strong>{sourceReady ? "Siam Community 生产账本已连接" : "质押生产账本暂不可用"}</strong><span>{sourceReady ? `统计时间 ${time(staking.capturedAt)} · 北京时区 · 真实账户口径 users.demo=0` : staking?.error ?? "正在连接独立质押服务。"}</span></div>
+      <span>{staking?.status === "stale" ? "缓存数据" : sourceReady ? "实时数据" : "等待数据"}</span>
+    </div>
+
+    <section className="ops-card staking-trend-card">
+      <CardTitle icon={ChartLineUp} title="每日质押与奖励日结" note="北京时间 · 暹罗币本金与 ANTFUN 奖励使用独立纵轴" />
+      {chartData.length ? <div className="staking-trend-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chartData} margin={{ top: 20, right: 28, bottom: 8, left: 10 }}>
+        <CartesianGrid stroke="#202a3b" strokeDasharray="3 5" vertical={false} />
+        <XAxis dataKey="label" tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#263249" }} />
+        <YAxis yAxisId="principal" tickFormatter={compactTokenAxis} tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={false} width={58} />
+        <YAxis yAxisId="reward" orientation="right" tickFormatter={compactTokenAxis} tick={{ fill: "#8995a8", fontSize: 11 }} tickLine={false} axisLine={false} width={58} />
+        <Tooltip content={<StakingTooltip />} cursor={{ fill: "#25314955" }} />
+        <Bar yAxisId="principal" dataKey="staked" name="新增质押" fill="#9b6cf5" radius={[4, 4, 0, 0]} maxBarSize={38} />
+        <Line yAxisId="reward" type="monotone" dataKey="reward" name="奖励日结" stroke="#42d7ae" strokeWidth={2.4} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+      </ComposedChart></ResponsiveContainer></div> : <Empty compact>{sourceReady ? "生产账本中尚无可绘制的质押或奖励日结日期。" : "等待质押数据源。"}</Empty>}
+      <div className="ops-volume-footnote"><span><i className="ops-series ops-series--violet" />新增质押（暹罗币）</span><span><i className="ops-series ops-series--green" />奖励日结（ANTFUN）</span><b>奖励按当日真实价格结算，不复利。</b></div>
+    </section>
+
+    <div className="ops-grid staking-detail-grid">
+      <section className="ops-card">
+        <CardTitle icon={Stack} title="质押周期分布" note={`${summary?.totalOrders ?? 0} 笔真实订单`} />
+        {(staking?.planBreakdown ?? []).length ? <DataTable headers={["周期", "日利率", "订单", "当前质押", "累计质押", "已结算奖励"]} rows={staking.planBreakdown.map((row) => [`${row.days} 天`, bps(row.dailyRateBps), `${row.activeOrders} / ${row.orders}`, tokenRaw(row.activeAmountRaw, "暹罗币"), tokenRaw(row.cumulativeAmountRaw, "暹罗币"), tokenRaw(row.settledRewardRaw, "ANTFUN")])} /> : <Empty compact>暂无真实质押周期数据。</Empty>}
+      </section>
+      <section className="ops-card">
+        <CardTitle icon={Wallet} title="出款结算概况" note="链上确认后计为已支付" />
+        <dl className="ops-kv ops-kv--wide staking-payout-kv">
+          <Row label="已确认出款" value={`${summary?.confirmedPayouts ?? 0} 笔`} />
+          <Row label="待处理出款" value={`${summary?.pendingPayouts ?? 0} 笔`} />
+          <Row label="已支付本金" value={summary ? tokenRaw(summary.paidPrincipalRaw, "暹罗币") : "—"} />
+          <Row label="已支付奖励" value={summary ? tokenRaw(summary.paidRewardRaw, "ANTFUN") : "—"} />
+          <Row label="待支付本金" value={summary ? tokenRaw(summary.pendingPrincipalRaw, "暹罗币") : "—"} />
+          <Row label="待支付奖励" value={summary ? tokenRaw(summary.pendingRewardRaw, "ANTFUN") : "—"} />
+        </dl>
+      </section>
+    </div>
+
+    <section className="ops-card monitor-table-card staking-records-card">
+      <div className="monitor-card-heading"><CardTitle icon={ListBullets} title={selected.title} note={selected.note} /><div className="monitor-tabs" role="tablist" aria-label="质押记录类型">
+        <button className={recordTab === "orders" ? "is-active" : ""} onClick={() => setRecordTab("orders")}>质押记录</button>
+        <button className={recordTab === "settlements" ? "is-active" : ""} onClick={() => setRecordTab("settlements")}>奖励日结</button>
+        <button className={recordTab === "payouts" ? "is-active" : ""} onClick={() => setRecordTab("payouts")}>出款结算</button>
+      </div></div>
+      {selected.rows.length ? <DataTable headers={selected.headers} rows={selected.rows} /> : <Empty compact>{sourceReady ? `${selected.title}目前为空。` : "等待质押生产账本。"}</Empty>}
+      <div className="staking-records-note"><ShieldCheck size={16} /><span>钱包地址和交易签名在公开控制台中已脱敏；总数、币量、状态、时间和结算价格保持真实。</span></div>
+    </section>
+  </>;
+}
+
+function Participant({ row }) {
+  return <span className="staking-participant"><strong>{row.participantId ?? "用户 —"}</strong><small>{row.addressMasked ?? "—"}</small></span>;
+}
+
+function RecordStatus({ value }) {
+  return <span className={`staking-record-status staking-record-status--${value}`}>{stakingStatus(value)}</span>;
+}
+
+function StakingTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const values = Object.fromEntries(payload.map((item) => [item.dataKey, item.value]));
+  return <div className="ops-volume-tooltip"><strong>{label}</strong><span><i style={{ background: "#9b6cf5" }} />新增质押<b>{formatToken(values.staked)} 暹罗币</b></span><span><i style={{ background: "#42d7ae" }} />奖励日结<b>{formatToken(values.reward)} ANTFUN</b></span></div>;
+}
+
 function LiquidityTooltip({ active, payload, label, labelName, dataKey }) {
   if (!active || !payload?.length) return null;
   const item = payload.find((entry) => entry.dataKey === dataKey) ?? payload[0];
@@ -601,6 +740,12 @@ function compactJson(value) { const text = JSON.stringify(value ?? {}); return t
 function displaySymbol(value) { return value === "SIAM" ? "暹罗币" : value; }
 function displayPool(value) { return value === "siamAntfun" ? "暹罗币 / ANTFUN" : value === "antfunUsdt" ? "ANTFUN / USDT" : value; }
 function microLamports(value) { return value == null ? "—" : `${Number(value).toLocaleString()} μ-lamports/CU`; }
+function rawNumber(value) { if (value == null || !/^-?\d+$/.test(String(value))) return null; return Number(value) / 1_000_000; }
+function formatToken(value) { const number = Number(value); return Number.isFinite(number) ? number.toLocaleString("zh-CN", { maximumFractionDigits: 6 }) : "—"; }
+function tokenRaw(value, symbol) { const number = rawNumber(value); return number == null ? "—" : `${formatToken(number)} ${symbol}`; }
+function compactTokenAxis(value) { const number = Number(value); if (!Number.isFinite(number)) return "—"; if (Math.abs(number) >= 1_000_000) return `${(number / 1_000_000).toFixed(1)}M`; if (Math.abs(number) >= 1_000) return `${(number / 1_000).toFixed(1)}K`; return number.toLocaleString("zh-CN", { maximumFractionDigits: 3 }); }
+function usdPrecise(value) { const number = Number(value); return Number.isFinite(number) ? `$${number.toLocaleString("zh-CN", { maximumSignificantDigits: 8 })}` : "—"; }
+function stakingStatus(value) { const labels = { active: "计息中", payout_pending: "到期出款中", redeemed: "已赎回", queued: "待出款", prepared: "已准备", submitted: "已提交", review: "链上确认中", confirmed: "已确认", failed: "失败", cancelled: "已取消", expired: "已过期" }; return labels[value] ?? value ?? "—"; }
 function short(value) { const text = String(value ?? ""); return text.length > 20 ? `${text.slice(0, 9)}…${text.slice(-8)}` : text || "—"; }
 function riskReasonZh(value) { const translations = { "Configured wallet balance is below the approved input amount.": "运营钱包输入资产余额不足", "Action would increase an already out-of-band inventory exposure.": "该方向会扩大已超出容忍带的库存敞口", "System is in observe mode.": "系统处于观察模式", "Automation is paused.": "自动化已暂停" }; return translations[value] ?? value; }
 function monitorStatus(value) { return value === "ready" ? "全量索引正常" : value === "stale" ? "显示最近成功数据" : value === "warming" ? "索引预热中" : "索引暂不可用"; }

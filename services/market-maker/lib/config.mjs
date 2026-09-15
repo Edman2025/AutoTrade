@@ -57,6 +57,7 @@ const DEFAULTS = Object.freeze({
   tokenActivityRefreshMs: 15_000,
   tokenActivityLimit: 40,
   tokenActivityParseBatch: 8,
+  stakingAnalyticsUrl: "http://127.0.0.1:4317/api/internal/staking-analytics",
 });
 
 export function loadConfig(env = process.env) {
@@ -91,6 +92,8 @@ export function loadConfig(env = process.env) {
   const rpcPolicyMode = privateRpcVerified ? "private-authenticated" : publicRpcRiskAccepted ? "public-risk-accepted" : "unverified";
   const accountingTimeZone = env.MAKER_ACCOUNTING_TIME_ZONE?.trim() || "Asia/Shanghai";
   validateTimeZone(accountingTimeZone);
+  const stakingAnalyticsUrl = env.SIAM_STAKING_ANALYTICS_URL?.trim() || DEFAULTS.stakingAnalyticsUrl;
+  validateLoopbackUrl(stakingAnalyticsUrl, "SIAM_STAKING_ANALYTICS_URL");
   const inventoryTargetsBps = {
     SIAM: integer(env.MAKER_INVENTORY_TARGET_SIAM_BPS ?? env.MAKER_INVENTORY_TARGET_BG_BPS, DEFAULTS.inventoryTargetSiamBps, 0, 10_000, "MAKER_INVENTORY_TARGET_SIAM_BPS"),
     ANTFUN: integer(env.MAKER_INVENTORY_TARGET_ANTFUN_BPS, DEFAULTS.inventoryTargetAntfunBps, 0, 10_000, "MAKER_INVENTORY_TARGET_ANTFUN_BPS"),
@@ -125,6 +128,7 @@ export function loadConfig(env = process.env) {
     tokenActivityRefreshMs: integer(env.MAKER_TOKEN_ACTIVITY_REFRESH_MS, DEFAULTS.tokenActivityRefreshMs, 5_000, 300_000, "MAKER_TOKEN_ACTIVITY_REFRESH_MS"),
     tokenActivityLimit: integer(env.MAKER_TOKEN_ACTIVITY_LIMIT, DEFAULTS.tokenActivityLimit, 10, 100, "MAKER_TOKEN_ACTIVITY_LIMIT"),
     tokenActivityParseBatch: integer(env.MAKER_TOKEN_ACTIVITY_PARSE_BATCH, DEFAULTS.tokenActivityParseBatch, 1, 20, "MAKER_TOKEN_ACTIVITY_PARSE_BATCH"),
+    stakingAnalyticsUrl,
     pools: {
       siamAntfun: POOLS.siamAntfun,
       antfunUsdt: POOLS.antfunUsdt,
@@ -175,6 +179,9 @@ export function publicConfig(config) {
       activityRefreshMs: config.tokenActivityRefreshMs,
       activityLimit: config.tokenActivityLimit,
       pnlScope: "indexed-analysis-window",
+    },
+    integrations: {
+      stakingAnalytics: { configured: Boolean(config.stakingAnalyticsUrl), source: "Siam Community production ledger" },
     },
   };
 }
@@ -249,6 +256,14 @@ function validateHttpsUrl(value, label) {
   let url;
   try { url = new URL(value); } catch { throw new Error(`${label} must be a valid URL.`); }
   if (url.protocol !== "https:") throw new Error(`${label} must use HTTPS.`);
+}
+
+function validateLoopbackUrl(value, label) {
+  let url;
+  try { url = new URL(value); } catch { throw new Error(`${label} must be a valid URL.`); }
+  if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "::1"].includes(url.hostname)) {
+    throw new Error(`${label} must use a loopback HTTP URL.`);
+  }
 }
 
 function safeHostname(value) {

@@ -43,6 +43,15 @@ test("CORS permits HTTPS and loopback HTTP origins only", () => {
   assert.throws(() => loadConfig({ MAKER_ALLOWED_ORIGINS: "http://maker.example" }), /HTTPS or a loopback/);
 });
 
+test("staking analytics can only use a loopback source", () => {
+  assert.equal(loadConfig({}).stakingAnalyticsUrl, "http://127.0.0.1:4317/api/internal/staking-analytics");
+  assert.throws(
+    () => loadConfig({ SIAM_STAKING_ANALYTICS_URL: "https://example.com/api/staking" }),
+    /loopback HTTP URL/,
+  );
+  assert.equal(publicConfig(loadConfig({})).integrations.stakingAnalytics.configured, true);
+});
+
 test("live mode requires an explicit mainnet acknowledgement", () => {
   assert.throws(() => loadConfig({
     MAKER_MODE: "live",

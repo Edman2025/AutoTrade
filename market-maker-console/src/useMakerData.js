@@ -5,14 +5,14 @@ const DEFAULT_API_BASE = import.meta.env.PROD ? window.location.origin : "http:/
 const API_BASE = (import.meta.env.VITE_MAKER_API_URL ?? DEFAULT_API_BASE).replace(/\/$/, "");
 
 export function useMakerData() {
-  const [state, setState] = useState({ status: "connecting", health: null, config: null, snapshot: null, volume: null, accounting: null, tokenIntelligence: null, tokenMonitor: null, executionInfrastructure: null, audit: [], intents: [], error: null, stream: "connecting", streamFailures: 0, updatedAt: null });
+  const [state, setState] = useState({ status: "connecting", health: null, config: null, snapshot: null, volume: null, accounting: null, tokenIntelligence: null, tokenMonitor: null, executionInfrastructure: null, staking: null, audit: [], intents: [], error: null, stream: "connecting", streamFailures: 0, updatedAt: null });
   const eventSourceRef = useRef(null);
   const mountedRef = useRef(true);
   const streamFailuresRef = useRef(0);
 
   const refresh = useCallback(async () => {
     try {
-      const [healthResponse, configResponse, snapshotResponse, volumeResponse, accountingResponse, intelligenceResponse, monitorResponse, infrastructureResponse, auditResponse, intentsResponse] = await Promise.all([
+      const [healthResponse, configResponse, snapshotResponse, volumeResponse, accountingResponse, intelligenceResponse, monitorResponse, infrastructureResponse, stakingResponse, auditResponse, intentsResponse] = await Promise.all([
         fetch(`${API_BASE}/api/health`, { cache: "no-store" }),
         fetch(`${API_BASE}/api/v1/config`, { cache: "no-store" }),
         fetch(`${API_BASE}/api/v1/snapshot`, { cache: "no-store" }),
@@ -21,14 +21,15 @@ export function useMakerData() {
         fetch(`${API_BASE}/api/public/v1/token-intelligence`, { cache: "no-store" }),
         fetch(`${API_BASE}/api/public/v1/token-monitor`, { cache: "no-store" }),
         fetch(`${API_BASE}/api/public/v1/execution-infrastructure`, { cache: "no-store" }),
+        fetch(`${API_BASE}/api/public/v1/staking`, { cache: "no-store" }),
         fetch(`${API_BASE}/api/v1/audit?limit=100`, { cache: "no-store" }),
         fetch(`${API_BASE}/api/v1/intents?limit=100`, { cache: "no-store" }),
       ]);
       const coreResponses = [healthResponse, configResponse, snapshotResponse];
       if (coreResponses.some((response) => !response.ok)) throw new Error(`核心监控 API ${coreResponses.map((response) => response.status).join("/")}`);
-      const optionalResponses = [volumeResponse, accountingResponse, intelligenceResponse, monitorResponse, infrastructureResponse, auditResponse, intentsResponse];
+      const optionalResponses = [volumeResponse, accountingResponse, intelligenceResponse, monitorResponse, infrastructureResponse, stakingResponse, auditResponse, intentsResponse];
       const optionalFailures = optionalResponses.filter((response) => !response.ok).map((response) => response.status);
-      const [health, config, snapshot, volume, accounting, tokenIntelligence, tokenMonitor, executionInfrastructure, audit, intents] = await Promise.all([
+      const [health, config, snapshot, volume, accounting, tokenIntelligence, tokenMonitor, executionInfrastructure, staking, audit, intents] = await Promise.all([
         healthResponse.json(),
         configResponse.json(),
         snapshotResponse.json(),
@@ -37,6 +38,7 @@ export function useMakerData() {
         intelligenceResponse.ok ? intelligenceResponse.json() : null,
         monitorResponse.ok ? monitorResponse.json() : null,
         infrastructureResponse.ok ? infrastructureResponse.json() : null,
+        stakingResponse.ok ? stakingResponse.json() : null,
         auditResponse.ok ? auditResponse.json() : null,
         intentsResponse.ok ? intentsResponse.json() : null,
       ]);
@@ -52,6 +54,7 @@ export function useMakerData() {
         tokenIntelligence: tokenIntelligence ?? current.tokenIntelligence,
         tokenMonitor: tokenMonitor ?? current.tokenMonitor,
         executionInfrastructure: executionInfrastructure ?? current.executionInfrastructure,
+        staking: staking ?? current.staking,
         audit: audit?.events ?? current.audit,
         intents: intents?.intents ?? current.intents,
         error: optionalFailures.length ? `部分辅助 API 暂时不可用（${optionalFailures.join("/")}），核心监控仍在运行。` : null,

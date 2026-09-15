@@ -130,6 +130,13 @@ button { color: inherit; }
 .monitor-pagination button:not(:disabled):hover, .monitor-tabs button:hover { color: #e5e9f1; border-color: #4e5b72; }
 .monitor-tabs { padding-right: 13px; display: flex; gap: 5px; }
 .monitor-tabs button.is-active { color: #cbb6fa; border-color: #5b447c; background: #1b152a; }
+.staking-source-callout { min-height: 58px; padding: 11px 14px; display: flex; align-items: center; gap: 11px; border: 1px solid #23483f; border-radius: 8px; background: #0b1b1a; color: #47dcae; }
+.staking-source-callout > svg { flex: 0 0 auto; }.staking-source-callout > div { min-width: 0; display: grid; gap: 4px; }.staking-source-callout strong { color: #d9f5ec; font-size: 13px; }.staking-source-callout span { color: #82a99d; font-size: 11px; line-height: 1.5; }.staking-source-callout > span { margin-left: auto; flex: 0 0 auto; padding: 4px 7px; border: 1px solid #2a6757; border-radius: 5px; color: #61dfb7; background: #0b251f; }
+.staking-source-callout--unavailable { border-color: #604b28; background: #21190d; color: #e6ad4d; }.staking-source-callout--unavailable strong { color: #f0d5a5; }.staking-source-callout--unavailable > span { border-color: #765b2b; color: #e6ad4d; background: #2a200f; }
+.staking-trend-chart { height: 300px; padding: 4px 4px 0; }.staking-detail-grid { grid-template-columns: minmax(0, 1.4fr) minmax(320px, .8fr); }.staking-detail-grid .ops-table { min-width: 690px; }.staking-payout-kv { padding-top: 2px; }
+.staking-records-card .ops-table { min-width: 1260px; }.staking-participant { display: grid; gap: 3px; }.staking-participant strong { color: #d7ddeb; font-size: 11px; font-weight: 600; }.staking-participant small { color: #6f7c91; font-family: var(--mono); font-size: 10px; }
+.staking-record-status { display: inline-flex; min-height: 23px; padding: 0 7px; align-items: center; border: 1px solid #39465b; border-radius: 999px; color: #aab5c6; background: #111a27; font-size: 11px; }.staking-record-status--active,.staking-record-status--confirmed { border-color: #236650; color: #56d8ad; background: #0b241d; }.staking-record-status--payout_pending,.staking-record-status--queued,.staking-record-status--prepared,.staking-record-status--submitted,.staking-record-status--review { border-color: #725924; color: #edbd58; background: #261e0e; }.staking-record-status--failed,.staking-record-status--expired { border-color: #76353e; color: #f47782; background: #281014; }
+.staking-records-note { min-height: 43px; padding: 9px 13px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #1d2736; color: #748197; font-size: 11px; }.staking-records-note svg { flex: 0 0 auto; color: #4da98c; }
 .monitor-link { color: #b9a1ef; text-decoration: none; }
 .monitor-link:hover { color: #dccdff; text-decoration: underline; }
 .trade-side { min-width: 47px; min-height: 23px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid; border-radius: 4px; font-size: 11px; font-weight: 600; }
@@ -341,6 +348,7 @@ footer { min-height: 36px; margin-top: auto; display: flex; align-items: center;
 }
 
 @media (max-width: 900px) {
+  .staking-detail-grid { grid-template-columns: 1fr; }
   .app-shell { display: block; }.sidebar { position: sticky; width: 100%; height: 54px; padding: 7px 10px; flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--stroke); overflow-x: auto; }.brand { min-width: 42px; position: sticky; left: 0; z-index: 2; padding: 0 10px 0 0; border-bottom: 0; background: var(--sidebar); }.brand-mark { width: 36px; height: 36px; flex-basis: 36px; }.brand-mark img { height: 36px; }.sidebar nav { display: flex; margin: 0; gap: 3px; }.sidebar nav button { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
   .main-content { padding: 13px; }.topbar { min-height: 64px; }.top-actions .network, .account-button > div { display: none; }.overview-grid { grid-template-columns: 1fr; }.reserve-section { grid-template-columns: 1fr; }
   .dashboard-layout { grid-template-columns: 1fr; }.right-rail { grid-template-columns: repeat(3, 1fr); align-items: start; }.impact-body { grid-template-columns: minmax(0, 1fr) 220px; }
@@ -374,4 +382,5 @@ footer { min-height: 36px; margin-top: auto; display: flex; align-items: center;
   .inline-action-preview { align-items: flex-start; flex-wrap: wrap; }.inline-action-preview .button { width: 100%; margin-left: 0; }.save-toast { left: 10px; right: 10px; bottom: 10px; }
   footer { flex-wrap: wrap; padding: 9px 0; }.account-menu-wrap { display: none; }
   .monitor-card-heading { align-items: stretch; flex-direction: column; }.monitor-card-heading > .ops-card__title { border-bottom: 1px solid #1d2736; }.monitor-toolbar, .monitor-tabs { padding: 0 12px 10px; overflow-x: auto; }.monitor-toolbar { align-items: stretch; flex-direction: column; }.monitor-toolbar input { width: 100%; }.monitor-source { justify-content: center; }.liquidity-monitor-chart { height: 280px; }
+  .staking-source-callout { align-items: flex-start; flex-wrap: wrap; }.staking-source-callout > span { margin-left: 29px; }.staking-trend-chart { height: 260px; }
 }

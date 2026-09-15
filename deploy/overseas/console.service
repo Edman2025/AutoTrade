@@ -7,6 +7,7 @@ User=siam-console
 Group=siam-console
 WorkingDirectory=/opt/siam-console/current
 EnvironmentFile=/etc/siam-console.env
+LoadCredential=staking-analytics-token:/etc/credstore/staking-analytics-token
 ExecStart=/opt/node/bin/node services/market-maker/server.mjs
 Restart=always
 RestartSec=5

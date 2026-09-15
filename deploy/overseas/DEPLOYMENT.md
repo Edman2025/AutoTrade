@@ -2,6 +2,12 @@
 
 2026-09-11 部署至 https://console.xianluobi.com ，VIKHOST 185.225.226.95。同日从旧服务器 `120.55.62.13` 完成正式迁移。
 
+## 2026-09-15 质押运营数据接入
+
+控制台新增“质押运营”菜单，数据由同机 `siam-community` 生产账本提供。页面分别展示真实注册账户、实际质押用户、当前及累计质押本金、已落账的 ANTFUN 日结奖励、质押周期分布、质押记录、奖励日结记录与链上出款结算。统计只包含 `users.demo=0`；“奖励”仅指 `reward_settlements` 已实际写入的日结，不包含未来预计收益。
+
+控制台后端只通过 `http://127.0.0.1:4317/api/internal/staking-analytics` 访问质押服务。两个 systemd 服务共享 root 所有、权限 0600 的 `/etc/credstore/staking-analytics-token`；凭据不进入环境文件、仓库、前端或公网响应。公开 `/api/public/v1/staking` 会移除用户内部 ID，并对钱包地址和交易签名脱敏；数据源不可用时明确返回 unavailable，已有成功缓存时标注 stale，不用零值冒充实时数据。
+
 ## 运行方式
 
 - 前端为 `market-maker-console/dist/client` 生产静态文件；同源 `/api/` 由 Nginx 转发至本机 8788，SSE 禁止代理缓冲。
@@ -11,7 +17,7 @@
 - Node 24.21.0，复用服务器 `/opt/node`；安装根目录锁定依赖和 vendored bigint-buffer，不执行安装脚本。
 - Nginx `/etc/nginx/sites-available/siam-console`；DNS `console A 185.225.226.95`，TTL 10800。
 - Let's Encrypt HTTPS，首次证书到期 2026-12-10；certbot.timer 自动续期。
-- 主站 xianluobi.com 的质押体验产品仍使用独立服务和数据库。
+- 主站 xianluobi.com 的质押产品仍使用独立服务和数据库；控制台只有凭据保护的只读统计权限。
 
 ## 数据与操作范围
 
@@ -25,7 +31,7 @@
 
 ## 验证与运维
 
-- 后端 38 项测试、前端 6 项测试、生产构建和依赖缓解检查通过。
+- 后端 41 项测试、前端 6 项测试、生产构建和依赖缓解检查通过。
 - 新实例健康状态 `ready`，`live`、`paused=false`、`executionReady=true`；快照、持币地址、活动及流动性已获得主网数据。
 - 数据库在服务重启后保留；初始一致性备份 `/var/backups/siam-console/initial-deployment.sqlite`，仅为同机备份。
 - 观察版切换前的环境和数据库保存在 `/var/backups/siam-console/pre-live-migration-20260911/`。
@@ -34,6 +40,7 @@
 systemctl status siam-console nginx
 journalctl -u siam-console -n 100 --no-pager
 curl http://127.0.0.1:8788/api/health
+curl http://127.0.0.1:8788/api/public/v1/staking
 sqlite3 /var/lib/siam-console/maker.sqlite 'PRAGMA integrity_check;'
 certbot renew --cert-name console.xianluobi.com --dry-run --no-random-sleep-on-renew
 ```
