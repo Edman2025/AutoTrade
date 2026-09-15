@@ -339,8 +339,6 @@ footer { min-height: 36px; margin-top: auto; display: flex; align-items: center;
 .percentage-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 
 @media (max-width: 1220px) {
-  .app-shell { grid-template-columns: 72px minmax(0, 1fr); }
-  .sidebar { padding-inline: 8px; }.brand { justify-content: center; padding-inline: 0; }.brand > div, .sidebar nav span, .sidebar-status { display: none; }.sidebar nav button { justify-content: center; padding: 0; }
   .reserve-section { grid-template-columns: 1fr; }.pool-stats { min-height: 72px; }
   .dashboard-layout { grid-template-columns: minmax(0, 1fr) 265px; }.insight-grid { grid-template-columns: 1fr 1fr; }.depth-panel { grid-column: 1 / -1; }
   .strategy-grid { grid-template-columns: 1fr 1fr; }.three-column-layout { grid-template-columns: 1fr 1fr; }.three-column-layout > .panel:last-child { grid-column: 1 / -1; }
@@ -349,7 +347,7 @@ footer { min-height: 36px; margin-top: auto; display: flex; align-items: center;
 
 @media (max-width: 900px) {
   .staking-detail-grid { grid-template-columns: 1fr; }
-  .app-shell { display: block; }.sidebar { position: sticky; width: 100%; height: 54px; padding: 7px 10px; flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--stroke); overflow-x: auto; }.brand { min-width: 42px; position: sticky; left: 0; z-index: 2; padding: 0 10px 0 0; border-bottom: 0; background: var(--sidebar); }.brand-mark { width: 36px; height: 36px; flex-basis: 36px; }.brand-mark img { height: 36px; }.sidebar nav { display: flex; margin: 0; gap: 3px; }.sidebar nav button { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
+  .app-shell { display: block; }.sidebar { position: sticky; width: 100%; height: 54px; padding: 7px 10px; flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--stroke); overflow-x: auto; }.brand { min-width: 42px; position: sticky; left: 0; z-index: 2; justify-content: center; padding: 0 10px 0 0; border-bottom: 0; background: var(--sidebar); }.brand > div, .sidebar nav span, .sidebar-status { display: none; }.brand-mark { width: 36px; height: 36px; flex-basis: 36px; }.brand-mark img { height: 36px; }.sidebar nav { display: flex; margin: 0; gap: 3px; }.sidebar nav button { width: 38px; min-width: 38px; height: 38px; min-height: 38px; justify-content: center; padding: 0; }
   .main-content { padding: 13px; }.topbar { min-height: 64px; }.top-actions .network, .account-button > div { display: none; }.overview-grid { grid-template-columns: 1fr; }.reserve-section { grid-template-columns: 1fr; }
   .dashboard-layout { grid-template-columns: 1fr; }.right-rail { grid-template-columns: repeat(3, 1fr); align-items: start; }.impact-body { grid-template-columns: minmax(0, 1fr) 220px; }
   .two-column-layout, .flow-layout, .wallet-layout, .risk-layout, .alert-layout, .automation-bottom { grid-template-columns: 1fr; }
