@@ -17,6 +17,7 @@ import {
   GearSix,
   Info,
   LinkSimple,
+  List,
   LockKey,
   Pause,
   Pulse,
@@ -425,6 +426,7 @@ export function App() {
   const [automation, setAutomation] = useState("running");
   const [modal, setModal] = useState(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const accountMenuRef = useRef(null);
   const maker = useMakerData();
   const siamPool = maker.health?.snapshotFresh ? maker.snapshot?.pools?.siamAntfun : null;
@@ -448,6 +450,22 @@ export function App() {
     };
   }, [accountOpen]);
 
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    function closeMobileNavOnEscape(event) {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    }
+    function closeMobileNavOnDesktop() {
+      if (window.innerWidth > 900) setMobileNavOpen(false);
+    }
+    window.addEventListener("keydown", closeMobileNavOnEscape);
+    window.addEventListener("resize", closeMobileNavOnDesktop);
+    return () => {
+      window.removeEventListener("keydown", closeMobileNavOnEscape);
+      window.removeEventListener("resize", closeMobileNavOnDesktop);
+    };
+  }, [mobileNavOpen]);
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -455,8 +473,12 @@ export function App() {
           <span className="brand-mark"><img src="/assets/autotrade-lockup-transparent.png" alt="AutoTrade" /></span>
           <div><strong>AMM Pool</strong><span>Operations</span></div>
         </div>
-        <nav aria-label="主菜单">
-          {navItems.map(([label, Icon]) => <button key={label} title={label} aria-label={label} className={activeNav === label ? "is-active" : ""} onClick={() => { setActiveNav(label); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Icon size={18} weight={activeNav === label ? "fill" : "regular"} /><span>{label}</span></button>)}
+        <button className="mobile-menu-trigger" type="button" aria-label={mobileNavOpen ? "关闭主菜单" : "打开主菜单"} aria-controls="primary-navigation" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
+          {mobileNavOpen ? <X size={21} weight="bold" /> : <List size={22} weight="bold" />}
+        </button>
+        {mobileNavOpen && <button className="mobile-nav-backdrop" type="button" aria-label="关闭主菜单" onClick={() => setMobileNavOpen(false)} />}
+        <nav id="primary-navigation" className={mobileNavOpen ? "is-mobile-open" : ""} aria-label="主菜单">
+          {navItems.map(([label, Icon]) => <button key={label} title={label} aria-label={label} className={activeNav === label ? "is-active" : ""} onClick={() => { setActiveNav(label); setMobileNavOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Icon size={18} weight={activeNav === label ? "fill" : "regular"} /><span>{label}</span></button>)}
         </nav>
         <div className="sidebar-status">
           <div><span className={`status-pulse ${maker.status === "offline" ? "is-offline" : ""}`} /><strong>{statusLabel}</strong></div>
