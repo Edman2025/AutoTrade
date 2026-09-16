@@ -518,6 +518,8 @@ function LiquidityChanges({ maker }) {
 function StakingOperations({ maker }) {
   const staking = maker.staking;
   const [recordTab, setRecordTab] = useState("orders");
+  const [recordPages, setRecordPages] = useState({ orders: 1, settlements: 1, payouts: 1 });
+  const recordsPerPage = 20;
   const summary = staking?.summary;
   const sourceReady = staking?.status === "ready" || staking?.status === "stale";
   const coverage = staking?.coverage;
@@ -583,6 +585,15 @@ function StakingOperations({ maker }) {
     },
   };
   const selected = records[recordTab];
+  const recordPageCount = Math.max(1, Math.ceil(selected.rows.length / recordsPerPage));
+  const recordPage = Math.min(recordPages[recordTab] ?? 1, recordPageCount);
+  const recordPageStart = (recordPage - 1) * recordsPerPage;
+  const visibleRecordRows = selected.rows.slice(recordPageStart, recordPageStart + recordsPerPage);
+
+  function changeRecordPage(nextPage) {
+    const page = Math.min(recordPageCount, Math.max(1, nextPage));
+    setRecordPages((current) => ({ ...current, [recordTab]: page }));
+  }
 
   return <>
     <div className="ops-metrics">
@@ -645,7 +656,12 @@ function StakingOperations({ maker }) {
         <button className={recordTab === "settlements" ? "is-active" : ""} onClick={() => setRecordTab("settlements")}>奖励日结</button>
         <button className={recordTab === "payouts" ? "is-active" : ""} onClick={() => setRecordTab("payouts")}>出款结算</button>
       </div></div>
-      {selected.rows.length ? <DataTable headers={selected.headers} rows={selected.rows} /> : <Empty compact>{sourceReady ? `${selected.title}目前为空。` : "等待质押生产账本。"}</Empty>}
+      {visibleRecordRows.length ? <DataTable headers={selected.headers} rows={visibleRecordRows} /> : <Empty compact>{sourceReady ? `${selected.title}目前为空。` : "等待质押生产账本。"}</Empty>}
+      {selected.rows.length > recordsPerPage && <div className="monitor-pagination" aria-label={`${selected.title}分页`}>
+        <span>每页 {recordsPerPage} 条 · 第 {recordPage} / {recordPageCount} 页 · 当前 {recordPageStart + 1}–{Math.min(recordPageStart + recordsPerPage, selected.rows.length)} / {selected.rows.length} 条</span>
+        <button type="button" aria-label={`上一页${selected.title}`} disabled={recordPage <= 1} onClick={() => changeRecordPage(recordPage - 1)}>上一页</button>
+        <button type="button" aria-label={`下一页${selected.title}`} disabled={recordPage >= recordPageCount} onClick={() => changeRecordPage(recordPage + 1)}>下一页</button>
+      </div>}
       <div className="staking-records-note"><ShieldCheck size={16} /><span>钱包地址和交易签名在公开控制台中已脱敏；总数、币量、状态、时间和结算价格保持真实。</span></div>
     </section>
   </>;
