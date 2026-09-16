@@ -6,6 +6,8 @@
     "generate:test-wallets": "node scripts/generate-test-wallets.mjs",
     "test-wallets:verify": "node scripts/verify-test-wallets.mjs",
     "test-wallets:reveal": "node scripts/reveal-test-wallet.mjs",
+    "siam-wallets:create": "node scripts/generate-siam-wallets.mjs 6",
+    "siam-wallets:verify": "node scripts/verify-siam-wallets.mjs",
     "wallet:create": "node scripts/create-wallet.mjs",
     "wallet:addresses": "node scripts/show-addresses.mjs",
     "wallet:reveal-recovery": "node scripts/reveal-recovery.mjs --i-understand-this-prints-my-recovery-phrase",
