@@ -66,6 +66,10 @@ const navItems = [
   ["设置", GearSix],
 ];
 
+const APP_TITLE = "AutoTrade · 实时做市控制台";
+const PAYOUT_ALERT_STORAGE_KEY = "autotrade:last-payout-alert";
+const PAYOUT_TERMINAL_STATUSES = new Set(["confirmed", "failed", "cancelled", "expired"]);
+
 const impactCurve = [
   { size: 0, buy: 0, sell: 0 },
   { size: 250, buy: 0.03, sell: -0.03 },
@@ -426,13 +430,23 @@ export function App() {
   const [automation, setAutomation] = useState("running");
   const [modal, setModal] = useState(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [alertCenterOpen, setAlertCenterOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState(() => typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "unsupported");
   const accountMenuRef = useRef(null);
+  const alertCenterRef = useRef(null);
   const maker = useMakerData();
   const siamPool = maker.health?.snapshotFresh ? maker.snapshot?.pools?.siamAntfun : null;
   const backendLive = maker.status === "live" || maker.status === "degraded";
   const statusLabel = maker.status === "live" ? "主网拓扑已验证" : maker.status === "degraded" ? "主网风控阻断" : maker.status === "offline" ? "主网服务离线" : "连接主网服务";
   const issueCount = maker.snapshot?.errors?.length ?? 0;
+  const pendingPayouts = Number(maker.staking?.summary?.pendingPayouts ?? 0);
+  const pendingPayoutFingerprint = (maker.staking?.payouts ?? [])
+    .filter((row) => !PAYOUT_TERMINAL_STATUSES.has(row.status))
+    .map((row) => `${row.id}:${row.status}:${row.updatedAt ?? row.createdAt ?? ""}`)
+    .sort()
+    .join("|") || (pendingPayouts > 0 ? `count:${pendingPayouts}` : "");
+  const alertCount = issueCount + pendingPayouts;
 
   useEffect(() => {
     if (!accountOpen) return undefined;
@@ -451,6 +465,47 @@ export function App() {
   }, [accountOpen]);
 
   useEffect(() => {
+    if (!alertCenterOpen) return undefined;
+    function closeAlertCenter(event) {
+      if (!alertCenterRef.current?.contains(event.target)) setAlertCenterOpen(false);
+    }
+    function closeAlertCenterOnEscape(event) {
+      if (event.key === "Escape") setAlertCenterOpen(false);
+    }
+    document.addEventListener("pointerdown", closeAlertCenter);
+    window.addEventListener("keydown", closeAlertCenterOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeAlertCenter);
+      window.removeEventListener("keydown", closeAlertCenterOnEscape);
+    };
+  }, [alertCenterOpen]);
+
+  useEffect(() => {
+    document.title = pendingPayouts > 0 ? `(${pendingPayouts}) 待处理提币 · ${APP_TITLE}` : APP_TITLE;
+    if ("setAppBadge" in navigator) {
+      if (pendingPayouts > 0) navigator.setAppBadge(pendingPayouts).catch(() => {});
+      else navigator.clearAppBadge?.().catch(() => {});
+    }
+    if (pendingPayouts <= 0) {
+      window.localStorage.removeItem(PAYOUT_ALERT_STORAGE_KEY);
+      return;
+    }
+    if (notificationPermission !== "granted" || !pendingPayoutFingerprint) return;
+    if (window.localStorage.getItem(PAYOUT_ALERT_STORAGE_KEY) === pendingPayoutFingerprint) return;
+    try {
+      new Notification("有待处理的质押提币", {
+        body: `当前有 ${pendingPayouts} 笔待处理，请进入质押运营查看。`,
+        icon: "/assets/autotrade-lockup-transparent.png",
+        tag: "staking-payout-pending",
+        renotify: true,
+      });
+      window.localStorage.setItem(PAYOUT_ALERT_STORAGE_KEY, pendingPayoutFingerprint);
+    } catch {
+      // In-app badges remain available when the browser blocks system notifications.
+    }
+  }, [notificationPermission, pendingPayoutFingerprint, pendingPayouts]);
+
+  useEffect(() => {
     if (!mobileNavOpen) return undefined;
     function closeMobileNavOnEscape(event) {
       if (event.key === "Escape") setMobileNavOpen(false);
@@ -466,6 +521,12 @@ export function App() {
     };
   }, [mobileNavOpen]);
 
+  async function enableDesktopNotifications() {
+    if (!("Notification" in window)) return;
+    const permission = await window.Notification.requestPermission();
+    setNotificationPermission(permission);
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -478,7 +539,10 @@ export function App() {
         </button>
         {mobileNavOpen && <button className="mobile-nav-backdrop" type="button" aria-label="关闭主菜单" onClick={() => setMobileNavOpen(false)} />}
         <nav id="primary-navigation" className={mobileNavOpen ? "is-mobile-open" : ""} aria-label="主菜单">
-          {navItems.map(([label, Icon]) => <button key={label} title={label} aria-label={label} className={activeNav === label ? "is-active" : ""} onClick={() => { setActiveNav(label); setMobileNavOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Icon size={18} weight={activeNav === label ? "fill" : "regular"} /><span>{label}</span></button>)}
+          {navItems.map(([label, Icon]) => {
+            const badge = label === "质押运营" ? pendingPayouts : 0;
+            return <button key={label} title={label} aria-label={`${label}${badge > 0 ? `，${badge} 笔待处理提币` : ""}`} className={activeNav === label ? "is-active" : ""} onClick={() => { setActiveNav(label); setMobileNavOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Icon size={18} weight={activeNav === label ? "fill" : "regular"} /><span>{label}</span>{badge > 0 && <i className="nav-alert-badge">{badge > 99 ? "99+" : badge}</i>}</button>;
+          })}
         </nav>
         <div className="sidebar-status">
           <div><span className={`status-pulse ${maker.status === "offline" ? "is-offline" : ""}`} /><strong>{statusLabel}</strong></div>
@@ -495,7 +559,21 @@ export function App() {
           </div>
           <div className="top-actions">
             <span className="network"><span className="status-pulse" />Solana Mainnet</span>
-            <button className="icon-button" aria-label="阻断项"><Bell size={18} />{issueCount > 0 && <i>{issueCount}</i>}</button>
+            <div className="alert-center-wrap" ref={alertCenterRef}>
+              <button className={`icon-button ${pendingPayouts > 0 ? "has-urgent-alert" : ""}`} type="button" aria-label={`提醒中心${alertCount > 0 ? `，${alertCount} 条提醒` : ""}`} aria-haspopup="dialog" aria-expanded={alertCenterOpen} aria-controls="alert-center" onClick={() => { setAlertCenterOpen((open) => !open); setAccountOpen(false); }}><Bell size={18} weight={pendingPayouts > 0 ? "fill" : "regular"} />{alertCount > 0 && <i>{alertCount > 99 ? "99+" : alertCount}</i>}</button>
+              {alertCenterOpen && <section className="alert-center" id="alert-center" role="dialog" aria-label="提醒中心">
+                <header><Bell size={18} weight="fill" /><div><strong>提醒中心</strong><small>每 10 秒检查生产账本</small></div></header>
+                <button className={`alert-center__item ${pendingPayouts > 0 ? "is-urgent" : ""}`} type="button" onClick={() => { setActiveNav("质押运营"); setAlertCenterOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                  {pendingPayouts > 0 ? <Warning size={19} weight="fill" /> : <CheckCircle size={19} weight="fill" />}
+                  <span><strong>{pendingPayouts > 0 ? `${pendingPayouts} 笔待处理提币` : "暂无待处理提币"}</strong><small>{pendingPayouts > 0 ? "进入质押运营查看金额、状态与记录" : "生产账本当前没有待办"}</small></span><ArrowRight size={15} />
+                </button>
+                <div className="alert-center__system"><span>系统阻断项</span><strong>{issueCount}</strong></div>
+                <div className="alert-center__permission">
+                  <div><strong>桌面通知</strong><small>{notificationPermission === "granted" ? "已开启，新待办会弹出系统提醒" : notificationPermission === "denied" ? "浏览器已拒绝，请在网站权限中开启" : notificationPermission === "unsupported" ? "当前浏览器不支持系统通知" : "开启后即使切换标签页也能收到提醒"}</small></div>
+                  {notificationPermission === "default" && <button type="button" onClick={enableDesktopNotifications}>开启</button>}
+                </div>
+              </section>}
+            </div>
             <div className="account-menu-wrap" ref={accountMenuRef}>
               <button
                 className={`account-button ${accountOpen ? "is-open" : ""}`}
@@ -503,7 +581,7 @@ export function App() {
                 aria-haspopup="menu"
                 aria-expanded={accountOpen}
                 aria-controls="operator-account-menu"
-                onClick={() => setAccountOpen((open) => !open)}
+                onClick={() => { setAccountOpen((open) => !open); setAlertCenterOpen(false); }}
               >
                 <span>MM</span>
                 <div><strong>运营账号</strong><small>{maker.config?.mode ?? "只读"} 模式</small></div>

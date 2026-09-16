@@ -521,6 +521,7 @@ function StakingOperations({ maker }) {
   const summary = staking?.summary;
   const sourceReady = staking?.status === "ready" || staking?.status === "stale";
   const coverage = staking?.coverage;
+  const pendingPayouts = Number(summary?.pendingPayouts ?? 0);
   const chartData = (staking?.daily ?? []).map((row) => ({
     ...row,
     label: row.date?.slice(5),
@@ -597,6 +598,12 @@ function StakingOperations({ maker }) {
       <span>{staking?.status === "stale" ? "缓存数据" : sourceReady ? "实时数据" : "等待数据"}</span>
     </div>
 
+    {pendingPayouts > 0 && <section className="staking-payout-alert" role="alert">
+      <Warning size={21} weight="fill" />
+      <div><strong>有 {pendingPayouts} 笔提币等待处理</strong><span>待支付本金 {tokenRaw(summary.pendingPrincipalRaw, "暹罗币")} · 待支付奖励 {tokenRaw(summary.pendingRewardRaw, "ANTFUN")}</span></div>
+      <button type="button" onClick={() => { setRecordTab("payouts"); document.getElementById("staking-records")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>查看提币记录<ArrowRight size={15} /></button>
+    </section>}
+
     <section className="ops-card staking-trend-card">
       <CardTitle icon={ChartLineUp} title="每日质押与奖励日结" note={useCompressedStakeScale ? "北京时间 · 新增质押跨度较大，左轴采用对称对数刻度；柱顶与明细显示实际币量" : "北京时间 · 暹罗币本金与 ANTFUN 奖励使用独立纵轴"} />
       {chartData.length ? <div className="staking-trend-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chartData} margin={{ top: 20, right: 28, bottom: 8, left: 10 }}>
@@ -632,7 +639,7 @@ function StakingOperations({ maker }) {
       </section>
     </div>
 
-    <section className="ops-card monitor-table-card staking-records-card">
+    <section className="ops-card monitor-table-card staking-records-card" id="staking-records">
       <div className="monitor-card-heading"><CardTitle icon={ListBullets} title={selected.title} note={selected.note} /><div className="monitor-tabs" role="tablist" aria-label="质押记录类型">
         <button className={recordTab === "orders" ? "is-active" : ""} onClick={() => setRecordTab("orders")}>质押记录</button>
         <button className={recordTab === "settlements" ? "is-active" : ""} onClick={() => setRecordTab("settlements")}>奖励日结</button>
